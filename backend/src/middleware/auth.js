@@ -17,6 +17,12 @@ export async function requireAuth(req, res, next) {
       return res.status(401).json({ error: 'Authentication required.' });
     }
 
+    // Support Guest Mode local token bypass
+    if (token === 'mock_token_guest' || token.startsWith('mock_token_')) {
+      req.user = { id: 'mock-user-123', email: 'guest@receiptprint.com' };
+      return next();
+    }
+
     // Verify token with Supabase
     const { data: { user }, error } = await supabase.auth.getUser(token);
 
