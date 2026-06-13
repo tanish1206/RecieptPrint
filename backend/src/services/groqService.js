@@ -112,7 +112,16 @@ Use exactly this JSON schema:
       throw new Error('Failed to parse receipt data from AI response.');
     }
   } catch (error) {
-    console.error('Error in analyzeReceiptWithGroq:', error.message);
+    console.error('Error in analyzeReceiptWithGroq:', error);
+    
+    const errorMessage = error.message || '';
+    if (errorMessage.includes('credits') || errorMessage.includes('permission-denied') || errorMessage.includes('402') || JSON.stringify(error).includes('credits')) {
+      throw new Error('Your Grok/xAI API key has no credits. Please purchase credits at https://console.x.ai to continue.');
+    }
+    if (errorMessage.includes('API key') || errorMessage.includes('401') || errorMessage.includes('Unauthorized')) {
+      throw new Error('The API key provided is invalid. Please check your GROQ_API_KEY configuration.');
+    }
+    
     // Rule 5: Never expose internal error messages to the client.
     throw new Error('Receipt analysis failed due to an upstream server error.');
   }

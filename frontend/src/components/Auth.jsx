@@ -68,6 +68,19 @@ export default function Auth({ onAuthSuccess }) {
     }
   };
 
+  const handleGuestLogin = () => {
+    setLoading(true);
+    setTimeout(() => {
+      setLoading(false);
+      const mockSession = {
+        access_token: 'mock_token_guest',
+        user: { id: 'mock-user-123', email: 'guest@receiptprint.com' }
+      };
+      localStorage.setItem('rp_session', JSON.stringify(mockSession));
+      onAuthSuccess(mockSession);
+    }, 500);
+  };
+
   return (
     <div className="max-w-md w-full mx-auto glass-panel rounded-2xl p-8 border border-slate-800 shadow-2xl animate-fade-in">
       <div className="text-center mb-6">
@@ -141,7 +154,7 @@ export default function Auth({ onAuthSuccess }) {
         <button
           type="submit"
           disabled={loading}
-          className="w-full flex items-center justify-center gap-2 py-3 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-semibold rounded-xl transition shadow-lg shadow-emerald-950/20 mt-2 text-sm"
+          className="w-full flex items-center justify-center gap-2 py-3 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-semibold rounded-xl transition shadow-lg shadow-emerald-950/20 mt-2 text-sm cursor-pointer"
         >
           {loading ? (
             'Processing...'
@@ -157,6 +170,16 @@ export default function Auth({ onAuthSuccess }) {
         </button>
       </form>
 
+      <div className="mt-4 flex flex-col gap-3">
+        <button
+          onClick={handleGuestLogin}
+          disabled={loading}
+          className="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold rounded-xl border border-slate-700 text-xs transition cursor-pointer"
+        >
+          Continue as Guest (Local Mock Mode)
+        </button>
+      </div>
+
       <div className="mt-6 border-t border-slate-800/80 pt-4 text-center">
         <button
           onClick={() => {
@@ -164,7 +187,7 @@ export default function Auth({ onAuthSuccess }) {
             setError(null);
             setInfo(null);
           }}
-          className="text-xs font-semibold text-emerald-400 hover:text-emerald-300 transition"
+          className="text-xs font-semibold text-emerald-400 hover:text-emerald-300 transition cursor-pointer"
         >
           {isSignUp 
             ? 'Already have an account? Sign In' 
