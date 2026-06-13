@@ -22,12 +22,34 @@ router.post('/', handleFileUpload, async (req, res) => {
       });
     }
 
-    const base64Image = file.buffer.toString('base64');
-    
-    // Call the Groq service (AI extraction)
-    // Rule 6: Use exactly ONE Groq API call per receipt upload
-    // Rule 8: Safe parsing is handled within the service
-    const extractedData = await analyzeReceiptWithGroq(base64Image, file.mimetype);
+    // Check if the request is from a guest mock user
+    const authHeader = req.headers.authorization;
+    const isGuest = authHeader && (authHeader.includes('mock_token_guest') || authHeader.includes('mock_token_'));
+
+    let extractedData;
+
+    if (isGuest) {
+      console.log('Guest Mode detected. Simulating Groq Vision extraction...');
+      extractedData = {
+        storeName: 'Reliance Fresh',
+        receiptDate: new Date().toISOString().split('T')[0],
+        totalAmount: 1450.00,
+        items: [
+          { name: 'Basmati Rice', quantity: 2, unit: 'kg', price: 180.00 },
+          { name: 'Amul Milk', quantity: 3, unit: 'litre', price: 195.00 },
+          { name: 'Paneer', quantity: 0.5, unit: 'kg', price: 150.00 },
+          { name: 'Mutton', quantity: 1, unit: 'kg', price: 720.00 },
+          { name: 'Tomato', quantity: 1.5, unit: 'kg', price: 60.00 },
+          { name: 'Onion', quantity: 2, unit: 'kg', price: 80.00 }
+        ]
+      };
+    } else {
+      const base64Image = file.buffer.toString('base64');
+      // Call the Groq service (AI extraction)
+      // Rule 6: Use exactly ONE Groq API call per receipt upload
+      // Rule 8: Safe parsing is handled within the service
+      extractedData = await analyzeReceiptWithGroq(base64Image, file.mimetype);
+    }
 
     // Rule 9: Carbon mapping happens in OUR code after extraction, not inside the Groq prompt
     let totalEmissions = 0.0;
