@@ -70,6 +70,17 @@ export default function Dashboard({ data, onBack }) {
         </span>
       </div>
 
+      {/* Warning banner if running in simulated mode */}
+      {data.warning && (
+        <div className="flex gap-3 items-start bg-amber-950/30 border border-amber-500/30 rounded-2xl p-4 text-amber-200 text-sm shadow-lg animate-fade-in" role="alert">
+          <AlertTriangle className="text-amber-400 flex-shrink-0 mt-0.5" size={20} />
+          <div>
+            <span className="font-bold block mb-0.5 text-amber-300">Simulated Results Fallback</span>
+            <span className="text-xs text-amber-200/90">{data.warning}</span>
+          </div>
+        </div>
+      )}
+
       {/* Main Grid */}
       <div className="grid gap-6 md:grid-cols-3">
         {/* Receipt Details Card */}
