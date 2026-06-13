@@ -60,33 +60,75 @@ Use exactly this JSON schema:
   ]
 }`;
 
+  let rawResponse = '';
+
   try {
-    const chatCompletion = await groq.chat.completions.create({
-      model: isXai ? 'grok-2-vision-1212' : 'llama-3.2-11b-vision-preview',
-      messages: [
-        {
-          role: 'user',
-          content: [
+    if (isXai) {
+      console.log('Routing request to xAI Grok Vision API...');
+      const response = await fetch('https://api.x.ai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+          model: 'grok-2-vision-1212',
+          messages: [
             {
-              type: 'text',
-              text: prompt,
-            },
-            {
-              type: 'image_url',
-              image_url: {
-                url: `data:${mimeType};base64,${base64Image}`,
-              },
+              role: 'user',
+              content: [
+                {
+                  type: 'text',
+                  text: prompt,
+                },
+                {
+                  type: 'image_url',
+                  image_url: {
+                    url: `data:${mimeType};base64,${base64Image}`,
+                  },
+                },
+              ],
             },
           ],
-        },
-      ],
-      temperature: 0.1,
-      response_format: { type: 'json_object' },
-    });
+          temperature: 0.1,
+          response_format: { type: 'json_object' },
+        })
+      });
 
-    const rawResponse = chatCompletion.choices[0]?.message?.content;
+      const data = await response.json();
+      if (!response.ok) {
+        console.error("xAI API Error Response:", JSON.stringify(data, null, 2));
+        throw new Error(data.error?.message || `xAI API responded with status ${response.status}`);
+      }
+      rawResponse = data.choices[0]?.message?.content;
+    } else {
+      const chatCompletion = await groq.chat.completions.create({
+        model: 'llama-3.2-11b-vision-preview',
+        messages: [
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'text',
+                text: prompt,
+              },
+              {
+                type: 'image_url',
+                image_url: {
+                  url: `data:${mimeType};base64,${base64Image}`,
+                },
+              },
+            ],
+          },
+        ],
+        temperature: 0.1,
+        response_format: { type: 'json_object' },
+      });
+      rawResponse = chatCompletion.choices[0]?.message?.content;
+    }
+
     if (!rawResponse) {
-      throw new Error('Groq AI returned an empty response.');
+      throw new Error('AI returned an empty response.');
     }
 
     // Rule 8: Parse response safely. Wrap JSON.parse() in try/catch.

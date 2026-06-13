@@ -110,8 +110,14 @@ router.post('/', handleFileUpload, async (req, res) => {
     });
 
   } catch (error) {
-    // Rule 5: Never expose internal error messages to the client. Log server-side.
     console.error('Error during receipt analysis:', error);
+    
+    const msg = error.message || '';
+    if (msg.includes('credits') || msg.includes('API key') || msg.includes('Grok')) {
+      return res.status(400).json({ error: msg });
+    }
+
+    // Rule 5: Never expose internal error messages to the client. Log server-side.
     res.status(500).json({
       error: 'An error occurred while analyzing the receipt. Please try again.'
     });
