@@ -25,8 +25,12 @@ export async function analyzeReceiptWithGroq(base64Image, mimeType) {
     throw new Error('GROQ_API_KEY is not configured on the server.');
   }
 
+  const apiKey = process.env.GROQ_API_KEY;
+  const isXai = apiKey.startsWith('xai-');
+
   const groq = new Groq({
-    apiKey: process.env.GROQ_API_KEY,
+    apiKey: apiKey,
+    ...(isXai ? { baseURL: 'https://api.x.ai/v1' } : {})
   });
 
   const prompt = `Analyze the attached receipt image and extract details about the transaction and the items purchased.
@@ -58,7 +62,7 @@ Use exactly this JSON schema:
 
   try {
     const chatCompletion = await groq.chat.completions.create({
-      model: 'llama-3.2-11b-vision-preview',
+      model: isXai ? 'grok-2-vision-1212' : 'llama-3.2-11b-vision-preview',
       messages: [
         {
           role: 'user',
