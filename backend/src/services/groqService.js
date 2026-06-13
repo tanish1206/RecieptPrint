@@ -72,7 +72,7 @@ Use exactly this JSON schema:
           'Authorization': `Bearer ${apiKey}`
         },
         body: JSON.stringify({
-          model: 'grok-2-vision-1212',
+          model: 'grok-2-1212',
           messages: [
             {
               role: 'user',
