@@ -1,0 +1,302 @@
+{
+  "items": [
+    {
+      "name": "rice",
+      "aliases": ["rice", "chawal", "basmati", "sona masoori", "kolam", "paddy"],
+      "co2_per_kg": 2.5,
+      "category": "grains",
+      "unit": "kg",
+      "suggestions": [
+        {
+          "name": "millet",
+          "co2_per_kg": 0.8,
+          "reason": "Millets like Ragi, Jowar, and Bajra require 70% less water than rice and emit much less methane."
+        },
+        {
+          "name": "wheat flour",
+          "co2_per_kg": 1.4,
+          "reason": "Wheat has a lower carbon footprint and uses less water compared to paddy cultivation."
+        }
+      ]
+    },
+    {
+      "name": "wheat flour",
+      "aliases": ["wheat flour", "atta", "maida", "gehun", "sharbati atta", "ashirvaad atta"],
+      "co2_per_kg": 1.4,
+      "category": "grains",
+      "unit": "kg",
+      "suggestions": [
+        {
+          "name": "millet",
+          "co2_per_kg": 0.8,
+          "reason": "Millets like Jowar or Bajra are highly resilient to climate change and carbon-light."
+        }
+      ]
+    },
+    {
+      "name": "millets",
+      "aliases": ["millet", "ragi", "jowar", "bajra", "nachni", "sorghum", "finger millet"],
+      "co2_per_kg": 0.8,
+      "category": "grains",
+      "unit": "kg",
+      "suggestions": []
+    },
+    {
+      "name": "toor dal",
+      "aliases": ["toor dal", "arhar dal", "tuvar dal", "split pigeon peas", "yellow dal"],
+      "co2_per_kg": 0.9,
+      "category": "pulses",
+      "unit": "kg",
+      "suggestions": []
+    },
+    {
+      "name": "moong dal",
+      "aliases": ["moong dal", "mung dal", "green gram", "split moong"],
+      "co2_per_kg": 0.8,
+      "category": "pulses",
+      "unit": "kg",
+      "suggestions": []
+    },
+    {
+      "name": "rajma",
+      "aliases": ["rajma", "kidney beans", "red kidney beans"],
+      "co2_per_kg": 1.0,
+      "category": "pulses",
+      "unit": "kg",
+      "suggestions": []
+    },
+    {
+      "name": "paneer",
+      "aliases": ["paneer", "cottage cheese", "amul paneer"],
+      "co2_per_kg": 8.2,
+      "category": "dairy",
+      "unit": "kg",
+      "suggestions": [
+        {
+          "name": "tofu",
+          "co2_per_kg": 1.5,
+          "reason": "Tofu is a plant-based soy product that has an 80% lower carbon footprint than dairy paneer."
+        }
+      ]
+    },
+    {
+      "name": "milk",
+      "aliases": ["milk", "doodh", "amul milk", "mother dairy milk", "cow milk", "buffalo milk"],
+      "co2_per_kg": 1.9,
+      "category": "dairy",
+      "unit": "litre",
+      "suggestions": [
+        {
+          "name": "soy milk",
+          "co2_per_kg": 0.7,
+          "reason": "Soy milk is widely available in India and produces a fraction of the greenhouse gas emissions of dairy."
+        },
+        {
+          "name": "oat milk",
+          "co2_per_kg": 0.9,
+          "reason": "Oat milk has low water usage and lower carbon emissions than cow's milk."
+        }
+      ]
+    },
+    {
+      "name": "curd",
+      "aliases": ["curd", "dahi", "yogurt", "amul dahi", "mother dairy dahi"],
+      "co2_per_kg": 2.1,
+      "category": "dairy",
+      "unit": "kg",
+      "suggestions": [
+        {
+          "name": "vegan dahi",
+          "co2_per_kg": 0.9,
+          "reason": "Peanut or soy-based curd has a significantly lower environmental impact."
+        }
+      ]
+    },
+    {
+      "name": "ghee",
+      "aliases": ["ghee", "clarified butter", "cow ghee", "amul ghee", "patanjali ghee"],
+      "co2_per_kg": 12.5,
+      "category": "dairy",
+      "unit": "kg",
+      "suggestions": [
+        {
+          "name": "mustard oil",
+          "co2_per_kg": 2.2,
+          "reason": "For general cooking, cold-pressed mustard oil is healthier and much lower in emissions."
+        }
+      ]
+    },
+    {
+      "name": "butter",
+      "aliases": ["butter", "makhan", "amul butter"],
+      "co2_per_kg": 9.5,
+      "category": "dairy",
+      "unit": "kg",
+      "suggestions": [
+        {
+          "name": "peanut butter",
+          "co2_per_kg": 2.0,
+          "reason": "Peanut butter is high in protein and has a much smaller agricultural footprint than dairy butter."
+        }
+      ]
+    },
+    {
+      "name": "chicken",
+      "aliases": ["chicken", "murgh", "chicken breast", "chicken leg"],
+      "co2_per_kg": 6.9,
+      "category": "meat",
+      "unit": "kg",
+      "suggestions": [
+        {
+          "name": "paneer",
+          "co2_per_kg": 8.2,
+          "reason": "While dairy paneer is high-carbon, plant options like jackfruit or soya chunks are better swaps."
+        },
+        {
+          "name": "soya chunks",
+          "co2_per_kg": 1.2,
+          "reason": "Soya chunks (mealmaker) are protein-rich and emit 80%+ less CO2 than chicken."
+        }
+      ]
+    },
+    {
+      "name": "mutton",
+      "aliases": ["mutton", "lamb", "goat meat", "bakra"],
+      "co2_per_kg": 24.5,
+      "category": "meat",
+      "unit": "kg",
+      "suggestions": [
+        {
+          "name": "chicken",
+          "co2_per_kg": 6.9,
+          "reason": "Switching from red meat (mutton) to white meat (chicken) reduces carbon emissions by over 70%."
+        },
+        {
+          "name": "soya chunks",
+          "co2_per_kg": 1.2,
+          "reason": "Soya chunks are a fantastic high-protein, zero-cholesterol, low-carbon swap."
+        }
+      ]
+    },
+    {
+      "name": "eggs",
+      "aliases": ["eggs", "egg", "anda"],
+      "co2_per_kg": 4.2,
+      "category": "meat",
+      "unit": "pcs",
+      "suggestions": [
+        {
+          "name": "tofu scramble",
+          "co2_per_kg": 1.5,
+          "reason": "Tofu scramble is a great plant-based breakfast swap with low carbon emissions."
+        }
+      ]
+    },
+    {
+      "name": "potato",
+      "aliases": ["potato", "aloo", "potatoes"],
+      "co2_per_kg": 0.4,
+      "category": "vegetables",
+      "unit": "kg",
+      "suggestions": []
+    },
+    {
+      "name": "tomato",
+      "aliases": ["tomato", "tamatar", "tomatoes"],
+      "co2_per_kg": 0.6,
+      "category": "vegetables",
+      "unit": "kg",
+      "suggestions": []
+    },
+    {
+      "name": "onion",
+      "aliases": ["onion", "pyaz", "onions"],
+      "co2_per_kg": 0.5,
+      "category": "vegetables",
+      "unit": "kg",
+      "suggestions": []
+    },
+    {
+      "name": "spinach",
+      "aliases": ["spinach", "palak"],
+      "co2_per_kg": 0.3,
+      "category": "vegetables",
+      "unit": "kg",
+      "suggestions": []
+    },
+    {
+      "name": "banana",
+      "aliases": ["banana", "kela", "bananas"],
+      "co2_per_kg": 0.7,
+      "category": "fruits",
+      "unit": "kg",
+      "suggestions": []
+    },
+    {
+      "name": "apple",
+      "aliases": ["apple", "seb", "apples"],
+      "co2_per_kg": 0.9,
+      "category": "fruits",
+      "unit": "kg",
+      "suggestions": []
+    },
+    {
+      "name": "mustard oil",
+      "aliases": ["mustard oil", "sarso ka tel", "sarson tel"],
+      "co2_per_kg": 2.2,
+      "category": "oils",
+      "unit": "litre",
+      "suggestions": []
+    },
+    {
+      "name": "cooking oil",
+      "aliases": ["cooking oil", "sunflower oil", "refined oil", "fortune oil", "fortune refined oil", "vegetable oil"],
+      "co2_per_kg": 2.5,
+      "category": "oils",
+      "unit": "litre",
+      "suggestions": [
+        {
+          "name": "mustard oil",
+          "co2_per_kg": 2.2,
+          "reason": "Mustard oil is locally grown, highly resource-efficient, and healthier for cooking."
+        }
+      ]
+    },
+    {
+      "name": "sugar",
+      "aliases": ["sugar", "cheeni", "chini"],
+      "co2_per_kg": 1.2,
+      "category": "misc",
+      "unit": "kg",
+      "suggestions": [
+        {
+          "name": "jaggery",
+          "co2_per_kg": 0.8,
+          "reason": "Jaggery (gur) is minimally processed locally, preserving nutrients and saving energy."
+        }
+      ]
+    },
+    {
+      "name": "tea",
+      "aliases": ["tea", "chai", "tea powder", "tata tea", "red label"],
+      "co2_per_kg": 1.5,
+      "category": "beverages",
+      "unit": "kg",
+      "suggestions": []
+    },
+    {
+      "name": "coffee",
+      "aliases": ["coffee", "nescafe", "bru"],
+      "co2_per_kg": 8.0,
+      "category": "beverages",
+      "unit": "kg",
+      "suggestions": [
+        {
+          "name": "tea",
+          "co2_per_kg": 1.5,
+          "reason": "Tea has an 80% lower carbon footprint than coffee, which is highly water-intensive to produce."
+        }
+      ]
+    }
+  ]
+}
