@@ -45,7 +45,13 @@ export default function Auth({ onAuthSuccess }) {
           password
         });
         if (error) throw error;
-        setInfo('Sign up successful! Please check your email for confirmation link, or try signing in.');
+        
+        if (data.session) {
+          localStorage.setItem('rp_session', JSON.stringify(data.session));
+          onAuthSuccess(data.session);
+        } else {
+          setInfo('Sign up successful! Please check your email for confirmation link, or try signing in.');
+        }
       } else {
         const { data, error } = await supabase.auth.signInWithPassword({
           email,

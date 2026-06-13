@@ -44,11 +44,35 @@ router.post('/', handleFileUpload, async (req, res) => {
         ]
       };
     } else {
-      const base64Image = file.buffer.toString('base64');
-      // Call the Groq service (AI extraction)
-      // Rule 6: Use exactly ONE Groq API call per receipt upload
-      // Rule 8: Safe parsing is handled within the service
-      extractedData = await analyzeReceiptWithGroq(base64Image, file.mimetype);
+      try {
+        const base64Image = file.buffer.toString('base64');
+        // Call the Groq service (AI extraction)
+        // Rule 6: Use exactly ONE Groq API call per receipt upload
+        // Rule 8: Safe parsing is handled within the service
+        extractedData = await analyzeReceiptWithGroq(base64Image, file.mimetype);
+      } catch (aiError) {
+        console.error('Real AI Analysis failed. Falling back to simulated parsing because of key/credit configurations.', aiError);
+        
+        const isCreditError = aiError.message.includes('credits') || aiError.message.includes('Grok') || aiError.message.includes('permission-denied') || aiError.message.includes('400');
+        const warningMessage = isCreditError
+          ? 'API key has no credits. Running in local simulation fallback.'
+          : 'Invalid API key or upstream error. Running in local simulation fallback.';
+
+        extractedData = {
+          storeName: 'Reliance Fresh (Simulated)',
+          receiptDate: new Date().toISOString().split('T')[0],
+          totalAmount: 1450.00,
+          items: [
+            { name: 'Basmati Rice', quantity: 2, unit: 'kg', price: 180.00 },
+            { name: 'Amul Milk', quantity: 3, unit: 'litre', price: 195.00 },
+            { name: 'Paneer', quantity: 0.5, unit: 'kg', price: 150.00 },
+            { name: 'Mutton', quantity: 1, unit: 'kg', price: 720.00 },
+            { name: 'Tomato', quantity: 1.5, unit: 'kg', price: 60.00 },
+            { name: 'Onion', quantity: 2, unit: 'kg', price: 80.00 }
+          ],
+          warning: warningMessage
+        };
+      }
     }
 
     // Rule 9: Carbon mapping happens in OUR code after extraction, not inside the Groq prompt
@@ -128,7 +152,8 @@ router.post('/', handleFileUpload, async (req, res) => {
       totalEmissions: totalEmissionsRounded,
       swapSuggestions,
       insights,
-      impactComparison
+      impactComparison,
+      warning: extractedData.warning || null
     });
 
   } catch (error) {

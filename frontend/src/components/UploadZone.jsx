@@ -6,7 +6,7 @@ import { Upload, Camera, FileText, Check, RotateCcw, AlertTriangle, Loader2 } fr
 // Configure pdf.js worker using CDN to avoid bundling issues
 pdfjsLib.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjsLib.version || '3.4.120'}/build/pdf.worker.min.js`;
 
-export default function UploadZone({ onAnalysisComplete }) {
+export default function UploadZone({ token, onAnalysisComplete }) {
   const [isMobile, setIsMobile] = useState(false);
   const [dragActive, setDragActive] = useState(false);
   const [file, setFile] = useState(null);
@@ -146,10 +146,15 @@ export default function UploadZone({ onAnalysisComplete }) {
       formData.append('receipt', fileToUpload, finalName);
 
       const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const headers = {};
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const response = await fetch(`${API_URL}/api/analyze`, {
         method: 'POST',
+        headers,
         body: formData,
-        // Optional Auth header if we add Supabase auth later
       });
 
       const data = await response.json();

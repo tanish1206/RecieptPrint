@@ -212,7 +212,7 @@ export default function App() {
                 Upload grocery receipts, scan automatically using Groq Vision, and instantly get India-localized carbon insights & eco-swaps.
               </p>
             </div>
-            <UploadZone onAnalysisComplete={handleAnalysisComplete} />
+            <UploadZone token={session.access_token} onAnalysisComplete={handleAnalysisComplete} />
           </div>
         )}
 
