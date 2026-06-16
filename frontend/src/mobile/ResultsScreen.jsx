@@ -1,194 +1,169 @@
 import React from 'react';
-import { ChevronLeft, Calendar, Leaf } from 'lucide-react';
+import { ChevronLeft, Leaf, Zap } from 'lucide-react';
 
-export default function ResultsScreen({ onBack, onSeeSwaps }) {
-  // SVG Circular progress configurations
+const CAT_COLORS = {
+  meat:     '#E53935',
+  dairy:    '#FB8C00',
+  produce:  '#43A047',
+  vegetables: '#43A047',
+  grains:   '#FF7043',
+  seafood:  '#039BE5',
+  beverage: '#8E24AA',
+  snacks:   '#FFB300',
+  misc:     '#90A4AE',
+};
+
+const CAT_LABELS = {
+  meat:       'Meat',
+  dairy:      'Dairy',
+  produce:    'Produce',
+  vegetables: 'Produce',
+  grains:     'Grains',
+  seafood:    'Seafood',
+  beverage:   'Beverages',
+  snacks:     'Snacks',
+  misc:       'Other',
+};
+
+function catColor(cat) { return CAT_COLORS[cat] || '#90A4AE'; }
+function catLabel(cat) { return CAT_LABELS[cat] || (cat ? cat.charAt(0).toUpperCase() + cat.slice(1) : 'Other'); }
+
+function buildSegments(items) {
+  const totals = {};
+  for (const item of items) {
+    const c = item.category || 'misc';
+    totals[c] = (totals[c] || 0) + item.co2e;
+  }
+  return Object.entries(totals).sort((a, b) => b[1] - a[1]).map(([cat, val]) => ({ cat, val }));
+}
+
+export default function ResultsScreen({ result, onBack, onSeeSwaps }) {
+  if (!result) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1, color: 'var(--text-muted)', fontSize: '14px' }}>
+        No analysis result available.
+      </div>
+    );
+  }
+
+  const { items = [], totalEmissions = 0, storeName, receiptDate, swapSuggestions = [], insights = [], impactComparison } = result;
+
   const radius = 66;
   const strokeWidth = 14;
-  const circumference = 2 * Math.PI * radius; // ~414.69px
+  const circumference = 2 * Math.PI * radius;
+  const segments = buildSegments(items);
 
-  // Values: Meat (2.1), Dairy (1.3), Produce (1.3)
-  // Total = 4.7
-  const total = 4.7;
-  const meatVal = 2.1;
-  const dairyVal = 1.3;
-  const produceVal = 1.3;
+  // Build SVG ring paths
+  let cumLen = 0;
+  const ringPaths = segments.map((seg) => {
+    const len = totalEmissions > 0 ? (seg.val / totalEmissions) * circumference : 0;
+    const offset = -cumLen;
+    cumLen += len;
+    return { ...seg, len, offset };
+  });
 
-  // Calculate segment lengths
-  const greenLen = (produceVal / total) * circumference; // ~114.70
-  const amberLen = (dairyVal / total) * circumference;   // ~114.70
-  const redLen = (meatVal / total) * circumference;       // ~185.29
-
-  // Start offsets (clockwise from top)
-  const greenOffset = 0;
-  const amberOffset = -greenLen;
-  const redOffset = -(greenLen + amberLen);
+  const topOffenders = [...items].sort((a, b) => b.co2e - a.co2e).slice(0, 3);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', flex: 1, height: '100%' }}>
+
       {/* Top Bar */}
       <div className="screen-header-bar">
-        <button 
-          className="header-bar-btn" 
-          onClick={onBack}
-          aria-label="Go back"
-        >
+        <button className="header-bar-btn" onClick={onBack} aria-label="Go back">
           <ChevronLeft size={20} style={{ color: 'var(--text-primary)' }} />
         </button>
-        <h2 className="header-bar-title">Your Receipt — June 13</h2>
-        <button className="header-bar-btn-secondary" style={{ width: '48px', height: '48px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <Calendar size={20} />
-        </button>
+        <h2 className="header-bar-title">{storeName || 'Receipt'} — {receiptDate}</h2>
+        <div style={{ width: '48px' }} />
       </div>
 
-      {/* Main Content Area */}
+      {/* Scrollable content */}
       <div className="dashboard-scroll-content">
-        
+
         {/* Circular Progress Ring */}
         <div className="circular-progress-section">
           <div className="circular-progress-ring-container">
             <svg width="160" height="160" viewBox="0 0 160 160">
-              {/* Background Ring Track */}
-              <circle
-                cx="80"
-                cy="80"
-                r={radius}
-                fill="transparent"
-                stroke="var(--border-color)"
-                strokeWidth={strokeWidth}
-              />
-              {/* Colored Segments */}
-              {/* Green (Produce) Segment */}
-              <circle
-                cx="80"
-                cy="80"
-                r={radius}
-                fill="transparent"
-                stroke="#43A047"
-                strokeWidth={strokeWidth}
-                strokeDasharray={`${greenLen} ${circumference}`}
-                strokeDashoffset={greenOffset}
-                transform="rotate(-90 80 80)"
-                strokeLinecap="butt"
-              />
-              {/* Amber (Dairy) Segment */}
-              <circle
-                cx="80"
-                cy="80"
-                r={radius}
-                fill="transparent"
-                stroke="#FB8C00"
-                strokeWidth={strokeWidth}
-                strokeDasharray={`${amberLen} ${circumference}`}
-                strokeDashoffset={amberOffset}
-                transform="rotate(-90 80 80)"
-                strokeLinecap="butt"
-              />
-              {/* Red (Meat) Segment */}
-              <circle
-                cx="80"
-                cy="80"
-                r={radius}
-                fill="transparent"
-                stroke="#E53935"
-                strokeWidth={strokeWidth}
-                strokeDasharray={`${redLen} ${circumference}`}
-                strokeDashoffset={redOffset}
-                transform="rotate(-90 80 80)"
-                strokeLinecap="butt"
-              />
+              <circle cx="80" cy="80" r={radius} fill="transparent" stroke="var(--border-color)" strokeWidth={strokeWidth} />
+              {ringPaths.map((seg) => (
+                <circle
+                  key={seg.cat}
+                  cx="80" cy="80" r={radius}
+                  fill="transparent"
+                  stroke={catColor(seg.cat)}
+                  strokeWidth={strokeWidth}
+                  strokeDasharray={`${seg.len} ${circumference}`}
+                  strokeDashoffset={seg.offset}
+                  transform="rotate(-90 80 80)"
+                  strokeLinecap="butt"
+                />
+              ))}
             </svg>
-            {/* Center Text inside ring */}
             <div className="circular-progress-text">
-              <span className="progress-text-value">4.7</span>
+              <span className="progress-text-value">{totalEmissions.toFixed(1)}</span>
               <span className="progress-text-unit">kg CO₂e</span>
               <span className="progress-text-label">Total Impact</span>
             </div>
           </div>
         </div>
 
-        {/* Category Cards Row */}
+        {/* Category Cards */}
         <div className="category-cards-row">
-          
-          {/* Card 1 — Meat */}
-          <div className="category-card">
-            <div className="category-icon-wrapper icon-meat">
-              {/* Meat / drumstick SVG icon */}
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M12 2c-1.5 0-3 1.5-3 3.5 0 .7.1 1.4.3 2L4.6 12.2c-.8.8-.8 2 0 2.8.8.8 2 .8 2.8 0L12.1 10.3c.6.2 1.3.3 2 .3 2 0 3.5-1.5 3.5-3 0-1-1-2.5-3-3.5S13.5 2 12 2Z" />
-                <path d="m14 14 3.5 3.5" />
-                <path d="M18.5 16.5c.8-.8 2-.8 2.8 0 .8.8.8 2 0 2.8-.8.8-2 .8-2.8 0" />
-              </svg>
+          {segments.slice(0, 3).map((seg) => (
+            <div key={seg.cat} className="category-card">
+              <div className="category-icon-wrapper" style={{ backgroundColor: catColor(seg.cat) + '22', color: catColor(seg.cat) }}>
+                <Leaf size={18} />
+              </div>
+              <span className="category-label">{catLabel(seg.cat)}</span>
+              <span className="category-value">{seg.val.toFixed(1)}</span>
+              <span className="category-unit">kg CO₂e</span>
             </div>
-            <span className="category-label">Meat</span>
-            <span className="category-value">2.1</span>
-            <span className="category-unit">kg CO₂e</span>
-          </div>
-
-          {/* Card 2 — Dairy */}
-          <div className="category-card">
-            <div className="category-icon-wrapper icon-dairy">
-              {/* Milk carton SVG icon */}
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M6 18h12" />
-                <path d="M6 22h12a2 2 0 0 0 2-2V9.5L16 6l-4-4-4 4-4 3.5V20a2 2 0 0 0 2 2Z" />
-                <path d="M10 6h4" />
-              </svg>
-            </div>
-            <span className="category-label">Dairy</span>
-            <span className="category-value">1.3</span>
-            <span className="category-unit">kg CO₂e</span>
-          </div>
-
-          {/* Card 3 — Produce */}
-          <div className="category-card">
-            <div className="category-icon-wrapper icon-produce">
-              <Leaf size={22} />
-            </div>
-            <span className="category-label">Produce</span>
-            <span className="category-value">1.3</span>
-            <span className="category-unit">kg CO₂e</span>
-          </div>
+          ))}
         </div>
 
-        {/* Top Offenders Section */}
+        {/* Impact comparison */}
+        {impactComparison && (
+          <div style={{ margin: '0 var(--spacing-16)', backgroundColor: 'var(--green-light)', borderRadius: 'var(--radius-card)', padding: 'var(--spacing-16)', display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+            <Zap size={20} style={{ color: 'var(--green-primary)', flexShrink: 0, marginTop: '2px' }} />
+            <p style={{ fontSize: '12px', color: 'var(--green-primary)', lineHeight: 1.5, fontWeight: 500 }}>
+              {impactComparison.text}
+            </p>
+          </div>
+        )}
+
+        {/* Top Offenders */}
         <div className="top-offenders-section">
           <h3 className="section-heading">Top Offenders</h3>
-          
-          <div className="offender-row">
-            <div className="offender-dot dot-red" />
-            <div className="offender-name">Amul Butter 100g</div>
-            <div style={{ flex: 1, borderBottom: '1px dotted var(--border-color)', margin: '0 8px' }} />
-            <div className="offender-value">0.9 kg CO₂e</div>
-          </div>
-
-          <div className="offender-row">
-            <div className="offender-dot dot-amber" />
-            <div className="offender-name">Aashirvaad Atta 5kg</div>
-            <div style={{ flex: 1, borderBottom: '1px dotted var(--border-color)', margin: '0 8px' }} />
-            <div className="offender-value">0.7 kg CO₂e</div>
-          </div>
-
-          <div className="offender-row">
-            <div className="offender-dot dot-amber" />
-            <div className="offender-name">Toor Dal 1kg</div>
-            <div style={{ flex: 1, borderBottom: '1px dotted var(--border-color)', margin: '0 8px' }} />
-            <div className="offender-value">0.5 kg CO₂e</div>
-          </div>
+          {topOffenders.map((item) => (
+            <div key={item.name} className="offender-row">
+              <div className="offender-dot" style={{ backgroundColor: catColor(item.category) }} />
+              <div className="offender-name">{item.name}</div>
+              <div style={{ flex: 1, borderBottom: '1px dotted var(--border-color)', margin: '0 8px' }} />
+              <div className="offender-value" style={{ color: catColor(item.category) }}>{item.co2e} kg CO₂e</div>
+            </div>
+          ))}
         </div>
 
+        {/* Insights */}
+        {insights.length > 0 && (
+          <div style={{ margin: 'var(--spacing-16)', backgroundColor: '#FFFFFF', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-card)', padding: 'var(--spacing-16)' }}>
+            <h3 className="section-heading" style={{ margin: '0 0 var(--spacing-12)' }}>Insights</h3>
+            {insights.map((insight, i) => (
+              <p key={i} style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: i < insights.length - 1 ? '8px' : 0 }}>• {insight}</p>
+            ))}
+          </div>
+        )}
+
       </div>
 
-      {/* See Swap Suggestions Button */}
-      <div className="btn-see-swaps-container">
-        <button 
-          className="btn-see-swaps" 
-          onClick={onSeeSwaps}
-          style={{ minHeight: '48px' }}
-        >
-          See Swap Suggestions
-        </button>
-      </div>
+      {/* See Swaps CTA */}
+      {swapSuggestions.length > 0 && (
+        <div className="btn-see-swaps-container">
+          <button className="btn-see-swaps" onClick={onSeeSwaps} style={{ minHeight: '48px' }}>
+            See {swapSuggestions.length} Swap Suggestions
+          </button>
+        </div>
+      )}
+
     </div>
   );
 }
