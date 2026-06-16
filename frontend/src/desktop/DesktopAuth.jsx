@@ -1,51 +1,90 @@
 import React, { useState } from 'react';
 import { Mail, Lock, LogIn, UserPlus, Info, CheckCircle2 } from 'lucide-react';
+import { supabase, isSupabaseConfigured } from '../utils/supabaseClient';
 
 export default function DesktopAuth({ onAuthSuccess }) {
-  const [email, setEmail] = useState('');
+  const [email, setEmail]       = useState('');
   const [password, setPassword] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState('');
+  const [loading, setLoading]   = useState(false);
+  const [error, setError]       = useState('');
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setMessage('');
+    setError('');
 
-    if (!email || !password) {
-      setMessage('Please enter both email and password.');
+    try {
+      if (!isSupabaseConfigured()) {
+        throw new Error('Supabase is not configured. Please add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to your .env file.');
+      }
+
+      let result;
+      if (isSignUp) {
+        result = await supabase.auth.signUp({ email, password });
+      } else {
+        result = await supabase.auth.signInWithPassword({ email, password });
+      }
+
+      const { data, error: authError } = result;
+
+      if (authError) {
+        throw new Error(authError.message);
+      }
+
+      if (!data.session) {
+        if (isSignUp) {
+          setError('Account created! Please check your email to confirm your account, then sign in.');
+        } else {
+          throw new Error('Sign in failed — no session returned.');
+        }
+        setLoading(false);
+        return;
+      }
+
+      // Persist session and notify parent
+      localStorage.setItem('rp_session', JSON.stringify(data.session));
+      onAuthSuccess(data.session);
+    } catch (err) {
+      setError(err.message || 'Authentication failed. Please try again.');
+    } finally {
       setLoading(false);
-      return;
     }
-
-    setTimeout(() => {
-      setLoading(false);
-      const mockSession = {
-        access_token: 'mock_token_' + Math.random().toString(36).substring(7),
-        user: { id: 'mock-user-desktop', email }
-      };
-      localStorage.setItem('rp_session', JSON.stringify(mockSession));
-      onAuthSuccess(mockSession);
-    }, 800);
   };
 
-  const handleGuest = () => {
+  const handleGuest = async () => {
     setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      const mockSession = {
-        access_token: 'mock_token_guest_desktop',
-        user: { id: 'mock-user-guest-desktop', email: 'guest.desktop@receiptprint.in' }
-      };
-      localStorage.setItem('rp_session', JSON.stringify(mockSession));
-      onAuthSuccess(mockSession);
-    }, 500);
+    setError('');
+
+    // Guest mode: sign in anonymously with Supabase or use a demo mock session
+    // If Supabase is configured, we use a real anon sign-in; otherwise fall back to a local mock.
+    try {
+      if (isSupabaseConfigured()) {
+        const { data, error: authError } = await supabase.auth.signInAnonymously();
+        if (authError) throw new Error(authError.message);
+        if (data.session) {
+          localStorage.setItem('rp_session', JSON.stringify(data.session));
+          onAuthSuccess(data.session);
+          return;
+        }
+      }
+    } catch (_) {
+      // Fall through to mock guest session
+    }
+
+    // Local mock fallback (so the demo scan still works)
+    const mockSession = {
+      access_token: 'mock_token_guest_' + Math.random().toString(36).substring(7),
+      user: { id: 'mock-guest-desktop', email: 'guest@receiptprint.in' },
+    };
+    localStorage.setItem('rp_session', JSON.stringify(mockSession));
+    onAuthSuccess(mockSession);
+    setLoading(false);
   };
 
   return (
     <div className="desktop-columns animate-fade-in" style={{ maxWidth: '840px', gap: 'var(--spacing-40)', alignItems: 'center' }}>
-      
+
       {/* Left Column: Marketing pitch */}
       <div style={{ flex: 1.1, display: 'flex', flexDirection: 'column', gap: 'var(--spacing-24)' }}>
         <h2 style={{ fontSize: '32px', fontWeight: 'var(--weight-large-num)', color: 'var(--text-primary)', lineHeight: 1.2 }}>
@@ -57,29 +96,19 @@ export default function DesktopAuth({ onAuthSuccess }) {
         </p>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-16)' }}>
-          <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
-            <CheckCircle2 size={20} style={{ color: 'var(--green-primary)', flexShrink: 0, marginTop: '2px' }} />
-            <div>
-              <h4 style={{ fontSize: '15px', fontWeight: 'var(--weight-heading)', color: 'var(--text-primary)' }}>Vision OCR Extraction</h4>
-              <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Just snap or drop receipt images to map emissions instantly.</p>
+          {[
+            { title: 'Vision OCR Extraction',  desc: 'Just snap or drop receipt images to map emissions instantly.' },
+            { title: 'Sustainable Swaps',        desc: 'Get localized suggestions to buy lower-emission milk, butter, and grains.' },
+            { title: 'History & Goals',           desc: 'Log purchases to measure monthly carbon savings and view real trends.' },
+          ].map((f) => (
+            <div key={f.title} style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+              <CheckCircle2 size={20} style={{ color: 'var(--green-primary)', flexShrink: 0, marginTop: '2px' }} />
+              <div>
+                <h4 style={{ fontSize: '15px', fontWeight: 'var(--weight-heading)', color: 'var(--text-primary)' }}>{f.title}</h4>
+                <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>{f.desc}</p>
+              </div>
             </div>
-          </div>
-
-          <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
-            <CheckCircle2 size={20} style={{ color: 'var(--green-primary)', flexShrink: 0, marginTop: '2px' }} />
-            <div>
-              <h4 style={{ fontSize: '15px', fontWeight: 'var(--weight-heading)', color: 'var(--text-primary)' }}>Sustainable Swaps</h4>
-              <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Get localized suggestions to buy lower-emission milk, butter, and grains.</p>
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
-            <CheckCircle2 size={20} style={{ color: 'var(--green-primary)', flexShrink: 0, marginTop: '2px' }} />
-            <div>
-              <h4 style={{ fontSize: '15px', fontWeight: 'var(--weight-heading)', color: 'var(--text-primary)' }}>History & Goals</h4>
-              <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Log purchases to measure monthly carbon savings and view real trends.</p>
-            </div>
-          </div>
+          ))}
         </div>
       </div>
 
@@ -89,17 +118,18 @@ export default function DesktopAuth({ onAuthSuccess }) {
           {isSignUp ? 'Create account' : 'Log in'}
         </h3>
         <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: 'var(--spacing-20)' }}>
-          Sign up to begin scanning receipts
+          {isSignUp ? 'Start scanning your receipts for free' : 'Sign in to begin scanning receipts'}
         </p>
 
-        {message && (
-          <div style={{ display: 'flex', gap: '8px', padding: '10px', borderRadius: '6px', border: '1px solid #FFCDD2', backgroundColor: '#FFEBEE', color: '#B71C1C', fontSize: '12px', marginBottom: 'var(--spacing-16)' }}>
-            <Info size={16} />
-            <span>{message}</span>
+        {error && (
+          <div style={{ display: 'flex', gap: '8px', padding: '10px', borderRadius: '6px', border: '1px solid #FFCDD2', backgroundColor: '#FFEBEE', color: '#B71C1C', fontSize: '12px', marginBottom: 'var(--spacing-16)', lineHeight: 1.4 }}>
+            <Info size={16} style={{ flexShrink: 0, marginTop: '1px' }} />
+            <span>{error}</span>
           </div>
         )}
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-12)' }}>
+          {/* Email */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
             <label style={{ fontSize: '12px', fontWeight: 'var(--weight-label)', color: 'var(--text-secondary)' }}>Email</label>
             <div style={{ position: 'relative' }}>
@@ -115,6 +145,7 @@ export default function DesktopAuth({ onAuthSuccess }) {
             </div>
           </div>
 
+          {/* Password */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
             <label style={{ fontSize: '12px', fontWeight: 'var(--weight-label)', color: 'var(--text-secondary)' }}>Password</label>
             <div style={{ position: 'relative' }}>
@@ -130,31 +161,29 @@ export default function DesktopAuth({ onAuthSuccess }) {
             </div>
           </div>
 
-          <button 
-            type="submit" 
-            className="btn-primary" 
+          <button
+            type="submit"
+            className="btn-primary"
             disabled={loading}
-            style={{ height: '40px', fontSize: '14px', borderRadius: '8px', marginTop: 'var(--spacing-8)' }}
+            style={{ height: '40px', fontSize: '14px', borderRadius: '8px', marginTop: 'var(--spacing-8)', opacity: loading ? 0.7 : 1 }}
           >
             {isSignUp ? <UserPlus size={16} /> : <LogIn size={16} />}
-            <span>{loading ? 'Processing...' : (isSignUp ? 'Sign Up' : 'Sign In')}</span>
+            <span>{loading ? 'Processing…' : (isSignUp ? 'Sign Up' : 'Sign In')}</span>
           </button>
         </form>
 
-        <button 
+        <button
           onClick={handleGuest}
           className="btn-secondary"
-          style={{ height: '40px', fontSize: '14px', borderRadius: '8px', marginTop: 'var(--spacing-8)', borderColor: '#CCCCCC', color: 'var(--text-secondary)' }}
+          disabled={loading}
+          style={{ height: '40px', fontSize: '14px', borderRadius: '8px', marginTop: 'var(--spacing-8)' }}
         >
-          Continue as Guest
+          Continue as Guest (Demo Mode)
         </button>
 
         <div style={{ textAlign: 'center', marginTop: 'var(--spacing-16)' }}>
-          <button 
-            onClick={() => {
-              setIsSignUp(!isSignUp);
-              setMessage('');
-            }}
+          <button
+            onClick={() => { setIsSignUp(!isSignUp); setError(''); }}
             style={{ fontSize: '12px', color: 'var(--green-primary)', fontWeight: 'var(--weight-label)' }}
           >
             {isSignUp ? 'Already have an account? Sign In' : "Don't have an account? Sign Up"}

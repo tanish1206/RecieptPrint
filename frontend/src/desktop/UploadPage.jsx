@@ -1,101 +1,208 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Leaf, UploadCloud, Sun, FileText, Frame, CheckCircle2, RefreshCw, LogOut, User, Sparkles } from 'lucide-react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip } from 'recharts';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import {
+  Leaf, UploadCloud, Sun, FileText, Frame, CheckCircle2,
+  RefreshCw, LogOut, User, Sparkles, AlertCircle, Zap,
+} from 'lucide-react';
+import {
+  LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip,
+} from 'recharts';
 import DesktopAuth from './DesktopAuth';
+import { analyzeReceipt, saveToHistory } from '../utils/api';
+
+// ─── Helpers ────────────────────────────────────────────────────────────────
+
+/** Category label map */
+const CAT_LABELS = {
+  meat:     'Meat & Proteins',
+  dairy:    'Dairy Products',
+  produce:  'Fresh Produce',
+  grains:   'Grains & Pulses',
+  seafood:  'Seafood',
+  beverage: 'Beverages',
+  snacks:   'Snacks & Packaged',
+  misc:     'Other Items',
+};
+
+/** Assign a color per category */
+const CAT_COLORS = {
+  meat:     '#E53935',
+  dairy:    '#FB8C00',
+  produce:  '#43A047',
+  grains:   '#FF7043',
+  seafood:  '#039BE5',
+  beverage: '#8E24AA',
+  snacks:   '#FFB300',
+  misc:     '#90A4AE',
+};
+
+function categoryColor(cat) {
+  return CAT_COLORS[cat] || '#90A4AE';
+}
+
+function categoryLabel(cat) {
+  return CAT_LABELS[cat] || (cat ? cat.charAt(0).toUpperCase() + cat.slice(1) : 'Other');
+}
+
+/** Convert an analysed result's items into ring-chart segments */
+function buildSegments(items) {
+  const totals = {};
+  for (const item of items) {
+    const c = item.category || 'misc';
+    totals[c] = (totals[c] || 0) + item.co2e;
+  }
+  return Object.entries(totals)
+    .sort((a, b) => b[1] - a[1])
+    .map(([cat, val]) => ({ cat, val }));
+}
+
+// Analysis step labels for the progress UI
+const STEPS = [
+  'Detecting receipt edges…',
+  'Extracting item names…',
+  'Mapping carbon database…',
+  'Calculating CO₂ emissions…',
+  'Generating swap suggestions…',
+];
+
+// ─── Component ───────────────────────────────────────────────────────────────
 
 export default function UploadPage({ session, onAuthSuccess, onLogOut }) {
-  const [dragActive, setDragActive] = useState(false);
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [analysisProgress, setAnalysisProgress] = useState(0);
-  const [analysisStep, setAnalysisStep] = useState('');
-  const [isAnalyzed, setIsAnalyzed] = useState(false);
+  const [dragActive,       setDragActive]       = useState(false);
+  const [selectedFile,     setSelectedFile]      = useState(null);
+  const [isAnalyzing,      setIsAnalyzing]       = useState(false);
+  const [analysisProgress, setAnalysisProgress]  = useState(0);
+  const [analysisStep,     setAnalysisStep]      = useState('');
+  const [result,           setResult]            = useState(null);   // ← real API data
+  const [apiError,         setApiError]          = useState('');
   const fileInputRef = useRef(null);
 
-  const steps = [
-    'Detecting receipt edges…',
-    'Extracting item names…',
-    'Mapping carbon database…',
-    'Calculating CO₂ emissions…',
-    'Generating swap suggestions…',
-  ];
+  // ── Drag / Drop / Select ──────────────────────────────────────────────────
 
-  const chartData = [
-    { name: 'May 20', value: 6.1 },
-    { name: 'May 27', value: 5.4 },
-    { name: 'Jun 3',  value: 4.8 },
-    { name: 'Jun 10', value: 4.2 },
-  ];
-
-  // --- File handling ---
-  const handleDrag = (e) => {
-    e.preventDefault(); e.stopPropagation();
-    setDragActive(e.type === 'dragenter' || e.type === 'dragover');
-  };
-
-  const handleDrop = (e) => {
-    e.preventDefault(); e.stopPropagation();
-    setDragActive(false);
-    if (e.dataTransfer.files?.[0]) handleFile(e.dataTransfer.files[0]);
-  };
-
-  const handleChange = (e) => {
+  const handleDrag = useCallback((e) => {
     e.preventDefault();
-    if (e.target.files?.[0]) handleFile(e.target.files[0]);
+    e.stopPropagation();
+    setDragActive(e.type === 'dragenter' || e.type === 'dragover');
+  }, []);
+
+  const handleDrop = useCallback((e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) startUpload(file);
+  }, [session]);
+
+  const handleChange = useCallback((e) => {
+    e.preventDefault();
+    const file = e.target.files?.[0];
+    if (file) startUpload(file);
+  }, [session]);
+
+  const triggerBrowse = () => fileInputRef.current?.click();
+
+  // ── Demo Scan (uses a sample image URL → fetches as blob) ────────────────
+
+  const triggerDemoScan = async () => {
+    setApiError('');
+    // Use a tiny but real JPEG so the backend can process it (1x1 px white pixel)
+    // In production you'd host a real sample receipt image
+    const sampleReceiptDataUri =
+      'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAABAAEDASIAAhEBAxEB/8QAFgABAQEAAAAAAAAAAAAAAAAABgUEB/8QAIBAAAQMEAwEAAAAAAAAAAAAAAQIDBAUREiExQf/EABQBAQAAAAAAAAAAAAAAAAAAAAD/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCx0nJtFjgx3pDjqvlQlKUgEk/4F1FtJbhW+O+40FOLSSoISSASdgKKKAP/2Q==';
+
+    const byteString = atob(sampleReceiptDataUri.split(',')[1]);
+    const ab = new ArrayBuffer(byteString.length);
+    const ia = new Uint8Array(ab);
+    for (let i = 0; i < byteString.length; i++) ia[i] = byteString.charCodeAt(i);
+    const blob = new Blob([ab], { type: 'image/jpeg' });
+    const demoFile = new File([blob], 'sample_grocery_receipt.jpg', { type: 'image/jpeg' });
+    startUpload(demoFile);
   };
 
-  const handleFile = (file) => {
+  // ── Core Upload + API Call ────────────────────────────────────────────────
+
+  const startUpload = async (file) => {
     setSelectedFile(file);
+    setResult(null);
+    setApiError('');
     setIsAnalyzing(true);
     setAnalysisProgress(0);
-    setAnalysisStep(steps[0]);
+    setAnalysisStep(STEPS[0]);
+
+    try {
+      // Tick the fake-progress bar while the real API call is in flight
+      const token = session?.access_token || 'mock_token_guest';
+
+      // Kick off real API call immediately
+      const apiPromise = analyzeReceipt(file, token);
+
+      // Animate progress bar in parallel (stops at 90% until API resolves)
+      let prog = 0;
+      const ticker = setInterval(() => {
+        prog = Math.min(prog + 3, 90);
+        const stepIdx = Math.min(Math.floor((prog / 90) * STEPS.length), STEPS.length - 1);
+        setAnalysisProgress(prog);
+        setAnalysisStep(STEPS[stepIdx]);
+      }, 120);
+
+      const data = await apiPromise;
+
+      clearInterval(ticker);
+      setAnalysisProgress(100);
+      setAnalysisStep('Analysis complete!');
+
+      await new Promise((r) => setTimeout(r, 500));
+
+      // Save to history in the background (non-blocking)
+      saveToHistory(data, token).catch(() => {});
+
+      setResult(data);
+      setIsAnalyzing(false);
+    } catch (err) {
+      setIsAnalyzing(false);
+      setApiError(err.message || 'Analysis failed. Please try again.');
+    }
   };
-
-  const triggerDemoScan = () => handleFile({ name: 'sample_grocery_receipt.jpg' });
-
-  const triggerBrowse = () => {
-    if (window.location.search.includes('mock=true')) { triggerDemoScan(); return; }
-    fileInputRef.current?.click();
-  };
-
-  // --- Analysis progress ticker ---
-  useEffect(() => {
-    if (!isAnalyzing) return;
-    const interval = setInterval(() => {
-      setAnalysisProgress((prev) => {
-        const next = prev + 4;
-        const stepIndex = Math.min(Math.floor((next / 100) * steps.length), steps.length - 1);
-        setAnalysisStep(steps[stepIndex]);
-        if (next >= 100) {
-          clearInterval(interval);
-          setTimeout(() => { setIsAnalyzing(false); setIsAnalyzed(true); }, 600);
-          return 100;
-        }
-        return next;
-      });
-    }, 80);
-    return () => clearInterval(interval);
-  }, [isAnalyzing]);
 
   const resetScanner = () => {
     setSelectedFile(null);
-    setIsAnalyzed(false);
+    setResult(null);
+    setApiError('');
     setAnalysisProgress(0);
     setIsAnalyzing(false);
   };
 
-  // --- SVG ring segments ---
-  const radius = 66, strokeWidth = 14;
-  const circumference = 2 * Math.PI * radius;
-  const total = 4.7;
-  const greenLen = (1.3 / total) * circumference;
-  const amberLen = (1.3 / total) * circumference;
-  const redLen   = (2.1 / total) * circumference;
+  // ── Dashboard helpers ─────────────────────────────────────────────────────
+
+  const segments    = result ? buildSegments(result.items) : [];
+  const total       = result?.totalEmissions ?? 0;
+  const circumference = 2 * Math.PI * 66;
+
+  // Build SVG ring: each segment arc
+  let cumLen = 0;
+  const ringPaths = segments.map((seg) => {
+    const len    = total > 0 ? (seg.val / total) * circumference : 0;
+    const offset = -cumLen;
+    cumLen += len;
+    return { ...seg, len, offset };
+  });
+
+  // Build top offenders (top 3 items by CO2e)
+  const topOffenders = result
+    ? [...result.items].sort((a, b) => b.co2e - a.co2e).slice(0, 3)
+    : [];
+
+  // Build swap suggestions from API (top 3)
+  const swaps = result?.swapSuggestions?.slice(0, 3) ?? [];
+
+  // Category breakdown for the ring legend
+  const catBreakdown = segments.slice(0, 4);
+
+  // ─────────────────────────────────────────────────────────────────────────
 
   return (
     <div className="desktop-wrapper">
 
-      {/* ─── Navigation ─────────────────────────────────────────── */}
+      {/* ── Navigation ──────────────────────────────────────────── */}
       <header className="desktop-nav">
         <div className="desktop-logo-area">
           <Leaf className="desktop-logo-icon" strokeWidth={2.5} />
@@ -109,32 +216,30 @@ export default function UploadPage({ session, onAuthSuccess, onLogOut }) {
             <>
               <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: 'var(--text-secondary)' }}>
                 <User size={14} style={{ color: 'var(--green-primary)' }} />
-                {session.user.email}
+                {session.user?.email}
               </span>
               <button
                 onClick={onLogOut}
                 className="desktop-nav-link"
-                style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--red-dot)' }}
+                style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--red-dot)', cursor: 'pointer' }}
               >
                 <LogOut size={14} /> Log Out
               </button>
             </>
           ) : (
             <>
-              <a href="#login"  className="desktop-nav-link">Log in</a>
+              <a href="#login" className="desktop-nav-link">Log in</a>
               <button className="btn-signup">Sign up</button>
             </>
           )}
         </nav>
       </header>
 
-      {/* ─── Main ───────────────────────────────────────────────── */}
+      {/* ── Main ────────────────────────────────────────────────── */}
       <main className="desktop-main">
 
         {/* ── AUTH GATE ── */}
-        {!session && (
-          <DesktopAuth onAuthSuccess={onAuthSuccess} />
-        )}
+        {!session && <DesktopAuth onAuthSuccess={onAuthSuccess} />}
 
         {/* ── ANALYSIS LOADER ── */}
         {session && isAnalyzing && (
@@ -150,7 +255,7 @@ export default function UploadPage({ session, onAuthSuccess, onLogOut }) {
                   strokeLinecap="round"
                   strokeDasharray={`${2 * Math.PI * 50}`}
                   strokeDashoffset={`${2 * Math.PI * 50 * (1 - analysisProgress / 100)}`}
-                  style={{ transition: 'stroke-dashoffset 0.1s linear' }}
+                  style={{ transition: 'stroke-dashoffset 0.12s linear' }}
                 />
               </svg>
               <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px', fontWeight: 700, color: 'var(--green-primary)' }}>
@@ -159,28 +264,47 @@ export default function UploadPage({ session, onAuthSuccess, onLogOut }) {
             </div>
             <div style={{ textAlign: 'center' }}>
               <h3 style={{ fontSize: '20px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px' }}>
-                Analysing your receipt
+                {selectedFile?.name === 'sample_grocery_receipt.jpg' ? 'Running demo analysis…' : 'Analysing your receipt'}
               </h3>
-              <p style={{ fontSize: '14px', color: 'var(--text-secondary)', minHeight: '20px' }}>
+              <p style={{ fontSize: '14px', color: 'var(--text-secondary)', minHeight: '20px', transition: 'opacity 0.3s' }}>
                 {analysisStep}
               </p>
             </div>
             <div style={{ width: '100%', height: '4px', borderRadius: '2px', backgroundColor: 'var(--border-color)', overflow: 'hidden' }}>
-              <div style={{ height: '100%', width: `${analysisProgress}%`, backgroundColor: 'var(--green-primary)', borderRadius: '2px', transition: 'width 0.08s linear' }} />
+              <div style={{ height: '100%', width: `${analysisProgress}%`, backgroundColor: 'var(--green-primary)', borderRadius: '2px', transition: 'width 0.12s linear' }} />
             </div>
           </div>
         )}
 
+        {/* ── ERROR STATE ── */}
+        {session && !isAnalyzing && apiError && (
+          <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--spacing-20)', maxWidth: '460px', textAlign: 'center' }}>
+            <AlertCircle size={48} style={{ color: 'var(--red-dot)' }} />
+            <h3 style={{ fontSize: '20px', fontWeight: 600, color: 'var(--text-primary)' }}>Analysis Failed</h3>
+            <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.5 }}>{apiError}</p>
+            <button onClick={resetScanner} className="btn-primary" style={{ height: '42px', padding: '0 var(--spacing-24)', borderRadius: '8px' }}>
+              <RefreshCw size={15} /> Try Again
+            </button>
+          </div>
+        )}
+
         {/* ── RESULTS DASHBOARD ── */}
-        {session && isAnalyzed && (
+        {session && result && !isAnalyzing && (
           <div className="animate-fade-in" style={{ width: '100%', maxWidth: '1100px', display: 'flex', flexDirection: 'column', gap: 'var(--spacing-24)' }}>
 
             {/* Header row */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-16)', paddingBottom: 'var(--spacing-16)', borderBottom: '1px solid var(--border-color)' }}>
               <div style={{ flex: 1 }}>
-                <h2 style={{ fontSize: '24px', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.2 }}>Receipt Carbon Dashboard</h2>
+                <h2 style={{ fontSize: '24px', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.2 }}>
+                  Receipt Carbon Dashboard
+                </h2>
                 <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '4px' }}>
-                  {selectedFile?.name || 'receipt.jpg'} &nbsp;·&nbsp; June 13, 2026
+                  {result.storeName} &nbsp;·&nbsp; {result.receiptDate} &nbsp;·&nbsp; ₹{result.totalAmount?.toFixed(2)}
+                  {result.warning && (
+                    <span style={{ marginLeft: '12px', color: 'var(--amber-dot)', fontWeight: 600, fontSize: '11px' }}>
+                      ⚠ {result.warning}
+                    </span>
+                  )}
                 </p>
               </div>
               <button onClick={resetScanner} className="btn-primary" style={{ height: '40px', padding: '0 var(--spacing-20)', borderRadius: '8px', fontSize: '14px' }}>
@@ -191,13 +315,13 @@ export default function UploadPage({ session, onAuthSuccess, onLogOut }) {
             {/* Stats strip */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--spacing-16)' }}>
               {[
-                { label: 'Total Impact',    value: '4.7 kg',   sub: 'CO₂e this receipt', color: 'var(--amber-dot)' },
-                { label: 'Items Scanned',   value: '3',         sub: 'grocery items',      color: 'var(--green-primary)' },
-                { label: 'Potential Saving', value: '1.2 kg',   sub: 'CO₂e with swaps',    color: 'var(--green-dot)' },
-                { label: 'Weekly Trend',    value: '↓ 12%',    sub: 'vs last week',        color: 'var(--green-primary)' },
+                { label: 'Total Impact',     value: `${total} kg`,               sub: 'CO₂e this receipt',    color: total > 5 ? 'var(--red-dot)' : total > 2 ? 'var(--amber-dot)' : 'var(--green-primary)' },
+                { label: 'Items Scanned',    value: String(result.items.length),  sub: 'grocery items',         color: 'var(--green-primary)' },
+                { label: 'Potential Saving', value: `${result.swapSuggestions?.reduce((s, sw) => s + (sw.originalCo2e - sw.swapCo2e), 0).toFixed(1)} kg`, sub: 'CO₂e with swaps', color: 'var(--green-dot)' },
+                { label: 'Driving Equiv.',   value: `${result.impactComparison?.drivingEquivalentKm} km`, sub: 'in a petrol car', color: 'var(--amber-dot)' },
               ].map((s, i) => (
                 <div key={i} className="animate-slide-up" style={{ animationDelay: `${i * 0.08}s`, backgroundColor: '#FFFFFF', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-card)', padding: 'var(--spacing-20)' }}>
-                  <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '6px' }}>{s.label}</p>
+                  <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.4px' }}>{s.label}</p>
                   <p style={{ fontSize: '26px', fontWeight: 700, color: s.color, lineHeight: 1 }}>{s.value}</p>
                   <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px' }}>{s.sub}</p>
                 </div>
@@ -207,126 +331,177 @@ export default function UploadPage({ session, onAuthSuccess, onLogOut }) {
             {/* Main grid */}
             <div style={{ display: 'grid', gridTemplateColumns: '1.3fr 1fr', gap: 'var(--spacing-24)' }}>
 
-              {/* Left column */}
+              {/* LEFT COLUMN */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-20)' }}>
 
-                {/* Ring + breakdown */}
+                {/* Ring + Category Breakdown */}
                 <div style={{ backgroundColor: '#FFFFFF', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-card)', padding: 'var(--spacing-24)', display: 'flex', gap: 'var(--spacing-32)', alignItems: 'center' }}>
                   <div className="circular-progress-ring-container">
                     <svg width="160" height="160" viewBox="0 0 160 160">
-                      <circle cx="80" cy="80" r={radius} fill="transparent" stroke="var(--border-color)" strokeWidth={strokeWidth} />
-                      <circle cx="80" cy="80" r={radius} fill="transparent" stroke="#43A047" strokeWidth={strokeWidth} strokeDasharray={`${greenLen} ${circumference}`} strokeDashoffset={0} transform="rotate(-90 80 80)" strokeLinecap="butt" />
-                      <circle cx="80" cy="80" r={radius} fill="transparent" stroke="#FB8C00" strokeWidth={strokeWidth} strokeDasharray={`${amberLen} ${circumference}`} strokeDashoffset={-greenLen} transform="rotate(-90 80 80)" strokeLinecap="butt" />
-                      <circle cx="80" cy="80" r={radius} fill="transparent" stroke="#E53935" strokeWidth={strokeWidth} strokeDasharray={`${redLen} ${circumference}`} strokeDashoffset={-(greenLen + amberLen)} transform="rotate(-90 80 80)" strokeLinecap="butt" />
+                      <circle cx="80" cy="80" r="66" fill="transparent" stroke="var(--border-color)" strokeWidth="14" />
+                      {ringPaths.map((seg) => (
+                        <circle
+                          key={seg.cat}
+                          cx="80" cy="80" r="66"
+                          fill="transparent"
+                          stroke={categoryColor(seg.cat)}
+                          strokeWidth="14"
+                          strokeDasharray={`${seg.len} ${circumference}`}
+                          strokeDashoffset={seg.offset}
+                          transform="rotate(-90 80 80)"
+                          strokeLinecap="butt"
+                        />
+                      ))}
                     </svg>
                     <div className="circular-progress-text">
-                      <span className="progress-text-value">4.7</span>
+                      <span className="progress-text-value">{total.toFixed(1)}</span>
                       <span className="progress-text-unit">kg CO₂e</span>
                       <span className="progress-text-label">Total Impact</span>
                     </div>
                   </div>
 
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                    <h4 style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Emission Breakdown</h4>
-                    {[
-                      { color: '#E53935', label: 'Meat & Proteins',  val: '2.1 kg', pct: 44.7 },
-                      { color: '#FB8C00', label: 'Dairy Products',    val: '1.3 kg', pct: 27.7 },
-                      { color: '#43A047', label: 'Fresh Produce',     val: '1.3 kg', pct: 27.7 },
-                    ].map((b) => (
-                      <div key={b.label}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '5px' }}>
-                          <span style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)' }}>
-                            <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: b.color, flexShrink: 0 }} />
-                            {b.label}
-                          </span>
-                          <strong>{b.val}</strong>
+                    <h4 style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>By Category</h4>
+                    {catBreakdown.map((seg) => {
+                      const pct = total > 0 ? Math.round((seg.val / total) * 100) : 0;
+                      return (
+                        <div key={seg.cat}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '5px' }}>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)' }}>
+                              <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: categoryColor(seg.cat), flexShrink: 0 }} />
+                              {categoryLabel(seg.cat)}
+                            </span>
+                            <strong>{seg.val.toFixed(2)} kg</strong>
+                          </div>
+                          <div style={{ height: '4px', backgroundColor: 'var(--border-color)', borderRadius: '2px', overflow: 'hidden' }}>
+                            <div style={{ height: '100%', width: `${pct}%`, backgroundColor: categoryColor(seg.cat), borderRadius: '2px' }} />
+                          </div>
                         </div>
-                        <div style={{ height: '4px', backgroundColor: 'var(--border-color)', borderRadius: '2px', overflow: 'hidden' }}>
-                          <div style={{ height: '100%', width: `${b.pct}%`, backgroundColor: b.color, borderRadius: '2px' }} />
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
 
-                {/* Trend chart */}
-                <div style={{ backgroundColor: '#FFFFFF', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-card)', padding: 'var(--spacing-24)', height: '260px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <h4 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>Carbon Footprint Trend</h4>
-                    <div style={{ backgroundColor: 'var(--green-light)', borderRadius: '6px', padding: '3px 10px', fontSize: '12px', fontWeight: 600, color: 'var(--green-primary)' }}>↓ 12% this week</div>
+                {/* Impact comparison card */}
+                {result.impactComparison && (
+                  <div style={{ backgroundColor: 'var(--green-light)', border: '1px solid #C8E6C9', borderRadius: 'var(--radius-card)', padding: 'var(--spacing-20)', display: 'flex', alignItems: 'center', gap: 'var(--spacing-16)' }}>
+                    <Zap size={28} style={{ color: 'var(--green-primary)', flexShrink: 0 }} />
+                    <p style={{ fontSize: '13px', color: 'var(--green-primary)', lineHeight: 1.5, fontWeight: 500 }}>
+                      {result.impactComparison.text}
+                    </p>
                   </div>
-                  <div style={{ flex: 1 }}>
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={chartData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
-                        <CartesianGrid stroke="#F5F5F5" vertical={false} />
-                        <XAxis dataKey="name" tickLine={false} axisLine={false} tick={{ fill: 'var(--text-muted)', fontSize: 11 }} />
-                        <YAxis domain={[0, 8]} ticks={[0, 2, 4, 6, 8]} tickLine={false} axisLine={false} tick={{ fill: 'var(--text-muted)', fontSize: 11 }} />
-                        <Tooltip contentStyle={{ borderRadius: '8px', border: '1px solid var(--border-color)', fontSize: '12px' }} formatter={(v) => [`${v} kg CO₂e`, 'Emissions']} />
-                        <Line type="monotone" dataKey="value" stroke="var(--green-primary)" strokeWidth={3} dot={{ r: 5, fill: 'var(--green-primary)', strokeWidth: 0 }} activeDot={{ r: 7 }} />
-                      </LineChart>
-                    </ResponsiveContainer>
+                )}
+
+                {/* All items table */}
+                <div style={{ backgroundColor: '#FFFFFF', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-card)', padding: 'var(--spacing-20)' }}>
+                  <h4 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: 'var(--spacing-16)' }}>All Scanned Items</h4>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
+                    {/* Header */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 80px 80px 80px', gap: '8px', padding: '0 0 8px 0', borderBottom: '1px solid var(--border-color)', fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                      <span>Item</span>
+                      <span style={{ textAlign: 'right' }}>Qty</span>
+                      <span style={{ textAlign: 'right' }}>Price</span>
+                      <span style={{ textAlign: 'right' }}>CO₂e</span>
+                    </div>
+                    {result.items.map((item, i) => (
+                      <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 80px 80px 80px', gap: '8px', padding: '10px 0', borderBottom: '1px solid var(--border-color)', fontSize: '13px', alignItems: 'center' }}>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: categoryColor(item.category), flexShrink: 0 }} />
+                          <span style={{ color: 'var(--text-primary)' }}>{item.name}</span>
+                          {item.isFallback && <span style={{ fontSize: '10px', color: 'var(--text-muted)', backgroundColor: 'var(--border-color)', padding: '1px 5px', borderRadius: '4px' }}>est.</span>}
+                        </span>
+                        <span style={{ textAlign: 'right', color: 'var(--text-secondary)' }}>{item.quantity} {item.unit}</span>
+                        <span style={{ textAlign: 'right', color: 'var(--text-secondary)' }}>₹{item.price?.toFixed(2)}</span>
+                        <span style={{ textAlign: 'right', fontWeight: 700, color: item.co2e > 2 ? 'var(--red-dot)' : item.co2e > 0.5 ? 'var(--amber-dot)' : 'var(--green-primary)' }}>
+                          {item.co2e} kg
+                        </span>
+                      </div>
+                    ))}
                   </div>
                 </div>
 
               </div>
 
-              {/* Right column */}
+              {/* RIGHT COLUMN */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-20)' }}>
 
-                {/* Top offenders */}
+                {/* Top Offenders */}
                 <div style={{ backgroundColor: '#FFFFFF', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-card)', padding: 'var(--spacing-20)' }}>
                   <h4 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: 'var(--spacing-16)' }}>Top Offenders</h4>
-                  {[
-                    { dot: 'var(--red-dot)',   name: 'Amul Butter 100g',     val: '0.9 kg CO₂e' },
-                    { dot: 'var(--amber-dot)', name: 'Aashirvaad Atta 5kg',  val: '0.7 kg CO₂e' },
-                    { dot: 'var(--amber-dot)', name: 'Toor Dal 1kg',         val: '0.5 kg CO₂e' },
-                  ].map((o) => (
-                    <div key={o.name} className="offender-row" style={{ marginBottom: '10px', height: 'auto' }}>
-                      <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: o.dot, flexShrink: 0 }} />
-                      <span className="offender-name">{o.name}</span>
-                      <span className="offender-value" style={{ color: o.dot }}>{o.val}</span>
+                  {topOffenders.length > 0 ? topOffenders.map((item) => (
+                    <div key={item.name} className="offender-row">
+                      <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: categoryColor(item.category), flexShrink: 0 }} />
+                      <span className="offender-name">{item.name}</span>
+                      <span className="offender-value" style={{ color: categoryColor(item.category) }}>{item.co2e} kg CO₂e</span>
                     </div>
-                  ))}
+                  )) : (
+                    <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>No items detected.</p>
+                  )}
                 </div>
 
-                {/* Swap suggestions */}
-                <div style={{ backgroundColor: '#FFFFFF', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-card)', padding: 'var(--spacing-20)', flex: 1 }}>
-                  <h4 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: 'var(--spacing-16)' }}>Eco Swap Suggestions</h4>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                    {[
-                      { from: 'Amul Butter 100g',    to: 'MilkyMist Butter 100g', save: '0.5 kg', pct: 56 },
-                      { from: 'Aashirvaad Atta 5kg', to: 'Pillsbury Atta 5kg',    save: '0.4 kg', pct: 40 },
-                      { from: 'Toor Dal 1kg',        to: 'Moong Dal 1kg',         save: '0.3 kg', pct: 35 },
-                    ].map((s) => (
-                      <div key={s.from} style={{ paddingBottom: '14px', borderBottom: '1px solid var(--border-color)' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '6px' }}>
-                          <div>
-                            <span style={{ color: 'var(--text-muted)', textDecoration: 'line-through' }}>{s.from}</span>
-                            <span style={{ margin: '0 6px', color: 'var(--text-muted)' }}>→</span>
-                            <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{s.to}</span>
-                          </div>
-                          <span style={{ fontWeight: 700, color: 'var(--green-primary)', whiteSpace: 'nowrap' }}>-{s.pct}%</span>
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <div style={{ flex: 1, height: '4px', backgroundColor: 'var(--border-color)', borderRadius: '2px', overflow: 'hidden' }}>
-                            <div style={{ height: '100%', width: `${s.pct}%`, backgroundColor: 'var(--green-primary)', borderRadius: '2px' }} />
-                          </div>
-                          <span style={{ fontSize: '11px', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>save {s.save}</span>
-                        </div>
+                {/* Insights */}
+                {result.insights?.length > 0 && (
+                  <div style={{ backgroundColor: '#FFFFFF', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-card)', padding: 'var(--spacing-20)' }}>
+                    <h4 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: 'var(--spacing-12)' }}>Insights</h4>
+                    {result.insights.map((insight, i) => (
+                      <div key={i} style={{ display: 'flex', gap: '10px', marginBottom: '10px', fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+                        <span style={{ color: 'var(--green-primary)', fontSize: '16px', lineHeight: '1.2' }}>•</span>
+                        {insight}
                       </div>
                     ))}
                   </div>
+                )}
+
+                {/* Eco Swap Suggestions */}
+                <div style={{ backgroundColor: '#FFFFFF', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-card)', padding: 'var(--spacing-20)', flex: 1 }}>
+                  <h4 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: 'var(--spacing-16)' }}>Eco Swap Suggestions</h4>
+
+                  {swaps.length > 0 ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                      {swaps.map((s, i) => {
+                        const savedKg = Math.max(0, s.originalCo2e - s.swapCo2e);
+                        const savePct = s.originalCo2e > 0 ? Math.round((savedKg / s.originalCo2e) * 100) : 0;
+                        return (
+                          <div key={i} style={{ paddingBottom: '14px', borderBottom: '1px solid var(--border-color)' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '6px', flexWrap: 'wrap', gap: '4px' }}>
+                              <div>
+                                <span style={{ color: 'var(--text-muted)', textDecoration: 'line-through' }}>{s.originalItem}</span>
+                                <span style={{ margin: '0 6px', color: 'var(--text-muted)' }}>→</span>
+                                <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{s.swapTo}</span>
+                              </div>
+                              <span style={{ fontWeight: 700, color: 'var(--green-primary)', whiteSpace: 'nowrap' }}>-{savePct}%</span>
+                            </div>
+                            {s.reason && (
+                              <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '6px', lineHeight: 1.4 }}>{s.reason}</p>
+                            )}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <div style={{ flex: 1, height: '4px', backgroundColor: 'var(--border-color)', borderRadius: '2px', overflow: 'hidden' }}>
+                                <div style={{ height: '100%', width: `${savePct}%`, backgroundColor: 'var(--green-primary)', borderRadius: '2px' }} />
+                              </div>
+                              <span style={{ fontSize: '11px', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>save {savedKg.toFixed(2)} kg</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>No swaps available for these items.</p>
+                  )}
 
                   {/* Annual savings card */}
-                  <div className="annual-savings-card" style={{ marginTop: 'var(--spacing-16)', padding: '14px var(--spacing-16)' }}>
-                    <div className="annual-savings-left">
-                      <span style={{ fontSize: '12px', opacity: 0.85 }}>Annual savings if all swaps made:</span>
-                      <span className="annual-savings-value" style={{ fontSize: '20px', marginTop: '4px' }}>Save 41 kg CO₂e / yr</span>
+                  {swaps.length > 0 && (
+                    <div className="annual-savings-card" style={{ marginTop: 'var(--spacing-16)', padding: '14px var(--spacing-16)' }}>
+                      <div className="annual-savings-left">
+                        <span style={{ fontSize: '12px', opacity: 0.85 }}>Annual savings (if all swaps made):</span>
+                        <span className="annual-savings-value" style={{ fontSize: '18px', marginTop: '4px' }}>
+                          Save {(swaps.reduce((s, sw) => s + Math.max(0, sw.originalCo2e - sw.swapCo2e), 0) * 52).toFixed(0)} kg CO₂e / yr
+                        </span>
+                      </div>
+                      <div className="annual-savings-right" style={{ width: '44px', height: '44px' }}>
+                        <Leaf size={22} />
+                      </div>
                     </div>
-                    <div className="annual-savings-right" style={{ width: '44px', height: '44px' }}>
-                      <Leaf size={22} />
-                    </div>
-                  </div>
+                  )}
                 </div>
 
               </div>
@@ -335,10 +510,10 @@ export default function UploadPage({ session, onAuthSuccess, onLogOut }) {
         )}
 
         {/* ── DROPZONE (logged in, idle) ── */}
-        {session && !isAnalyzing && !isAnalyzed && (
+        {session && !isAnalyzing && !result && !apiError && (
           <div className="animate-fade-in" style={{ width: '100%', maxWidth: '800px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--spacing-32)' }}>
 
-            {/* Hero heading above dropzone */}
+            {/* Hero heading */}
             <div style={{ textAlign: 'center' }}>
               <h1 style={{ fontSize: '32px', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.2, marginBottom: '10px' }}>
                 Scan your grocery receipt
@@ -349,10 +524,22 @@ export default function UploadPage({ session, onAuthSuccess, onLogOut }) {
             </div>
 
             <div className="desktop-columns" style={{ width: '100%', alignItems: 'flex-start' }}>
+
               {/* Dropzone */}
               <div style={{ flex: 1 }}>
-                <form onDragEnter={handleDrag} onDragOver={handleDrag} onDragLeave={handleDrag} onDrop={handleDrop} onSubmit={e => e.preventDefault()}>
-                  <input ref={fileInputRef} type="file" id="desktop-file-upload" accept="image/jpeg,image/png,application/pdf" onChange={handleChange} style={{ display: 'none' }} />
+                <form
+                  onDragEnter={handleDrag} onDragOver={handleDrag}
+                  onDragLeave={handleDrag} onDrop={handleDrop}
+                  onSubmit={(e) => e.preventDefault()}
+                >
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    id="desktop-file-upload"
+                    accept="image/jpeg,image/png,application/pdf"
+                    onChange={handleChange}
+                    style={{ display: 'none' }}
+                  />
                   <div
                     className={`dropzone-card ${dragActive ? 'dragging' : ''}`}
                     onClick={triggerBrowse}
@@ -387,8 +574,8 @@ export default function UploadPage({ session, onAuthSuccess, onLogOut }) {
                     fontFamily: 'inherit',
                     transition: 'all 0.2s ease',
                   }}
-                  onMouseEnter={e => { e.currentTarget.style.background = 'var(--green-light)'; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--green-light)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
                 >
                   <Sparkles size={16} />
                   Try Demo Scan (sample receipt)
@@ -405,6 +592,7 @@ export default function UploadPage({ session, onAuthSuccess, onLogOut }) {
                   <div className="tip-row"><div className="tip-icon"><CheckCircle2 size={16} /></div><div className="tip-text">Review and confirm details after upload.</div></div>
                 </div>
               </div>
+
             </div>
           </div>
         )}
