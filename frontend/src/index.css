@@ -1163,3 +1163,134 @@ button:focus-visible, a:focus-visible, input:focus-visible {
   transform: translateY(0.5px);
 }
 
+/* ─── Desktop: Primary Button ───────────────────────────── */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background-color: var(--green-primary);
+  color: #FFFFFF;
+  font-size: 14px;
+  font-weight: var(--weight-heading);
+  padding: var(--spacing-8) var(--spacing-20);
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.15s ease;
+}
+
+.btn-primary:hover {
+  background-color: var(--green-mid);
+}
+
+/* ─── Shared: Secondary Button ──────────────────────────── */
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  background-color: transparent;
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: var(--weight-label);
+  height: 40px;
+  border-radius: 8px;
+  border: 1.5px solid var(--border-color);
+  cursor: pointer;
+  transition: border-color 0.2s ease, color 0.2s ease;
+  font-family: inherit;
+}
+
+.btn-secondary:hover {
+  border-color: var(--green-primary);
+  color: var(--green-primary);
+}
+
+/* ─── Desktop: SVG Progress Ring ────────────────────────── */
+.circular-progress-ring-container {
+  position: relative;
+  width: 160px;
+  height: 160px;
+  flex-shrink: 0;
+}
+
+.circular-progress-text {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+
+.progress-text-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1;
+}
+
+.progress-text-unit {
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.progress-text-label {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+/* ─── Desktop: Top Offenders Row ────────────────────────── */
+.offender-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 36px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.offender-name {
+  flex: 1;
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.offender-value {
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* ─── Desktop: Spinner Loader ───────────────────────────── */
+.spinner-loader {
+  animation: spin 1.5s linear infinite;
+}
+
+@keyframes spin {
+  0%   { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* ─── Desktop: Progress Bar ─────────────────────────────── */
+.progress-bar-container {
+  background-color: var(--border-color);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background-color: var(--green-primary);
+  border-radius: 2px;
+  transition: width 0.08s linear;
+}
+
+/* ─── Desktop: dot colors ───────────────────────────────── */
+.dot-red   { background-color: var(--red-dot); }
+.dot-amber { background-color: var(--amber-dot); }
+.dot-green { background-color: var(--green-dot); }
+
