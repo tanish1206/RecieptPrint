@@ -9,7 +9,18 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-app.use(cors());
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow requests with no origin (mobile/curl/Postman) or any localhost origin
+    if (!origin || origin.includes('localhost') || origin.includes('127.0.0.1')) {
+      callback(null, true);
+    } else {
+      callback(null, true); // Also allow all origins in dev; tighten in prod
+    }
+  },
+  credentials: true,
+}));
+
 app.use(express.json({ limit: '10mb' })); // support larger base64 payloads if needed
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
