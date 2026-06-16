@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 
 export default function useDeviceType() {
   const isMobile = () =>
+    window.location.search.includes('mobile=true') ||
     /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
     window.matchMedia("(max-width: 768px)").matches;
 

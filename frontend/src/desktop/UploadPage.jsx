@@ -55,6 +55,10 @@ export default function UploadPage({ session, onAuthSuccess, onLogOut }) {
     setAnalysisProgress(0);
   };
 
+  const triggerDemoScan = () => {
+    handleFile({ name: "sample_grocery_receipt.jpg" });
+  };
+
   useEffect(() => {
     if (!isAnalyzing) return;
 
@@ -68,16 +72,17 @@ export default function UploadPage({ session, onAuthSuccess, onLogOut }) {
           }, 400);
           return 100;
         }
-        return prev + 10;
+        return prev + 4;
       });
-    }, 200);
+    }, 80);
 
     return () => clearInterval(interval);
   }, [isAnalyzing]);
 
-  const triggerBrowse = (e) => {
-    if (e.altKey) {
-      handleFile({ name: "mock_receipt_carbon_tracker.pdf" });
+  const triggerBrowse = () => {
+    // If ?mock=true in URL, fire demo directly
+    if (window.location.search.includes('mock=true')) {
+      triggerDemoScan();
       return;
     }
     if (fileInputRef.current) {
