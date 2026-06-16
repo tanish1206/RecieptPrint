@@ -14,6 +14,10 @@ body {
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
 }
 
 /* Base sizes based on responsive layout */
@@ -95,35 +99,12 @@ button:focus-visible, a:focus-visible, input:focus-visible {
   }
 }
 
-/* Status Bar */
-.status-bar {
-  height: 44px;
-  background-color: var(--bg-page);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0 var(--spacing-16);
-  flex-shrink: 0;
-  user-select: none;
-}
-
-.status-time {
-  font-size: 15px;
-  font-weight: var(--weight-heading);
-  color: var(--text-primary);
-}
-
-.status-icons {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-8);
-  font-size: 13px;
-  color: var(--text-primary);
-}
+/* Status Bar removed */
 
 /* Bottom Navigation */
 .bottom-nav {
-  height: calc(60px + env(safe-area-inset-bottom, 0px));
+  height: calc(60px + env(safe-area-inset-bottom, 8px));
+  padding-bottom: env(safe-area-inset-bottom, 8px);
   background-color: var(--bg-page);
   border-top: 1px solid var(--border-color);
   display: flex;
@@ -172,7 +153,7 @@ button:focus-visible, a:focus-visible, input:focus-visible {
   flex-direction: column;
   align-items: center;
   justify-content: space-between;
-  padding: 0 var(--spacing-24) var(--spacing-24) var(--spacing-24);
+  padding: env(safe-area-inset-top, 24px) var(--spacing-24) var(--spacing-24) var(--spacing-24);
   flex: 1;
 }
 
@@ -421,14 +402,18 @@ button:focus-visible, a:focus-visible, input:focus-visible {
   background-color: var(--bg-surface);
 }
 
-/* Screen 3: Results Dashboard */
+/* Screen Top Header Bar */
 .screen-header-bar {
-  height: 56px;
+  height: calc(52px + env(safe-area-inset-top, 16px));
+  padding-top: env(safe-area-inset-top, 16px);
+  box-sizing: border-box;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 var(--spacing-16);
-  border-bottom: 1px solid var(--border-color);
+  padding-left: var(--spacing-16);
+  padding-right: var(--spacing-16);
+  background-color: #FFFFFF;
+  border-bottom: 1px solid #EEEEEE;
   flex-shrink: 0;
 }
 
@@ -897,62 +882,7 @@ button:focus-visible, a:focus-visible, input:focus-visible {
   flex-direction: column;
 }
 
-/* Browser Chrome */
-.browser-chrome {
-  height: 36px;
-  background-color: #F1F3F4;
-  display: flex;
-  align-items: center;
-  padding: 0 var(--spacing-16);
-  gap: var(--spacing-16);
-  border-bottom: 1px solid #DDDDDD;
-  user-select: none;
-}
-
-.browser-dots {
-  display: flex;
-  gap: 8px;
-}
-
-.browser-dot {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-}
-
-.dot-close { background-color: #FF5F57; }
-.dot-minimize { background-color: #FFBD2E; }
-.dot-maximize { background-color: #28C840; }
-
-.browser-nav-btns {
-  display: flex;
-  gap: var(--spacing-16);
-  color: var(--text-muted);
-  font-size: 14px;
-}
-
-.browser-url-bar {
-  flex: 1;
-  max-width: 360px;
-  height: 24px;
-  background-color: #FFFFFF;
-  border-radius: 12px;
-  border: 1px solid #DDDDDD;
-  margin: 0 auto;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--spacing-4);
-  font-size: 13px;
-  color: var(--text-secondary);
-}
-
-.browser-chrome-right {
-  display: flex;
-  gap: var(--spacing-16);
-  color: var(--text-muted);
-  font-size: 16px;
-}
+/* Browser Chrome removed */
 
 /* Desktop Navbar */
 .desktop-nav {
@@ -963,6 +893,9 @@ button:focus-visible, a:focus-visible, input:focus-visible {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  position: sticky;
+  top: 0;
+  z-index: 100;
 }
 
 .desktop-logo-area {

@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Leaf, UploadCloud, Sun, FileText, Frame, CheckCircle2, Star, MoreHorizontal, ArrowLeft, ArrowRight, Lock } from 'lucide-react';
+import { Leaf, UploadCloud, Sun, FileText, Frame, CheckCircle2 } from 'lucide-react';
 
 export default function UploadPage() {
   const [dragActive, setDragActive] = useState(false);
@@ -37,7 +37,11 @@ export default function UploadPage() {
     setSelectedFile(file);
   };
 
-  const triggerBrowse = () => {
+  const triggerBrowse = (e) => {
+    if (e.altKey) {
+      handleFile({ name: "mock_receipt_carbon_tracker.pdf" });
+      return;
+    }
     if (fileInputRef.current) {
       fileInputRef.current.click();
     }
@@ -46,30 +50,6 @@ export default function UploadPage() {
   return (
     <div className="desktop-wrapper">
       
-      {/* Decorative Browser Chrome */}
-      <div className="browser-chrome" aria-label="Simulated Browser Chrome">
-        <div className="browser-dots">
-          <div className="browser-dot dot-close" />
-          <div className="browser-dot dot-minimize" />
-          <div className="browser-dot dot-maximize" />
-        </div>
-        
-        <div className="browser-nav-btns">
-          <ArrowLeft size={14} style={{ cursor: 'not-allowed', opacity: 0.5 }} />
-          <ArrowRight size={14} style={{ cursor: 'not-allowed', opacity: 0.5 }} />
-        </div>
-
-        <div className="browser-url-bar">
-          <Lock size={12} style={{ color: 'var(--text-secondary)' }} />
-          <span>receiptprint.in/upload</span>
-        </div>
-
-        <div className="browser-chrome-right">
-          <Star size={14} style={{ cursor: 'pointer' }} />
-          <MoreHorizontal size={14} style={{ cursor: 'pointer' }} />
-        </div>
-      </div>
-
       {/* Top Navigation Bar */}
       <header className="desktop-nav">
         <div className="desktop-logo-area">

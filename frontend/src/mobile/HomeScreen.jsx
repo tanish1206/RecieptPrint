@@ -31,7 +31,10 @@ export default function HomeScreen({ onImageSelect }) {
         <Leaf 
           className="mobile-home-logo" 
           strokeWidth={2}
-          style={{ color: 'var(--green-primary)' }}
+          style={{ color: 'var(--green-primary)', cursor: 'pointer' }}
+          onClick={() => onImageSelect("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='400' viewBox='0 0 300 400'><rect width='100%' height='100%' fill='%23F5F5F5'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' font-family='sans-serif' font-size='20' fill='%23999999'>Scanned Receipt Image</text></svg>")}
+          role="button"
+          aria-label="Simulate receipt scan (dev mode)"
         />
         <h1 className="mobile-home-title">ReceiptPrint</h1>
         <p className="mobile-home-tagline">
