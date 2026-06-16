@@ -5,10 +5,15 @@ import PreviewScreen from './PreviewScreen';
 import ResultsScreen from './ResultsScreen';
 import SwapsScreen from './SwapsScreen';
 import HistoryScreen from './HistoryScreen';
+import MobileAuth from './MobileAuth';
 
-export default function MobileShell() {
+export default function MobileShell({ session, onAuthSuccess, onLogOut }) {
   const [currentScreen, setCurrentScreen] = useState('home'); // 'home' | 'preview' | 'results' | 'swaps' | 'history' | 'profile'
   const [capturedImage, setCapturedImage] = useState(null);
+
+  if (!session) {
+    return <MobileAuth onAuthSuccess={onAuthSuccess} />;
+  }
 
   // Determine active tab
   const getActiveTab = () => {
@@ -27,13 +32,7 @@ export default function MobileShell() {
 
   const handleTabClick = (tab) => {
     if (tab === 'home') {
-      // Reset home flow or keep current subscreen if already in it
-      if (['preview', 'results', 'swaps'].includes(currentScreen)) {
-        // Keep it as is or reset to home on double tap
-        setCurrentScreen('home');
-      } else {
-        setCurrentScreen('home');
-      }
+      setCurrentScreen('home');
     } else {
       setCurrentScreen(tab);
     }
@@ -43,7 +42,6 @@ export default function MobileShell() {
     <div className="mobile-app-wrapper">
       <div className="mobile-shell">
         
-
         {/* Viewport Screen Content */}
         <div className="screen-content">
           {currentScreen === 'home' && (
@@ -72,21 +70,36 @@ export default function MobileShell() {
             <HistoryScreen onBack={() => setCurrentScreen('home')} />
           )}
           {currentScreen === 'profile' && (
-            <div className="mobile-profile">
+            <div className="mobile-profile animate-fade-in">
               <div className="profile-avatar">🌿</div>
               <h2 className="profile-name">Eco Tracker</h2>
-              <p className="profile-email">eco.user@receiptprint.in</p>
+              <p className="profile-email">{session?.user?.email || 'user@receiptprint.in'}</p>
 
               <div className="profile-stats">
-                <div className="profile-stat-box">
+                <div className="profile-stat-box animate-slide-up">
                   <span className="profile-stat-val">4</span>
                   <span className="profile-stat-lbl">Receipts Scanned</span>
                 </div>
-                <div className="profile-stat-box">
+                <div className="profile-stat-box animate-slide-up" style={{ animationDelay: '0.1s' }}>
                   <span className="profile-stat-val">20.4</span>
                   <span className="profile-stat-lbl">Total kg CO₂e</span>
                 </div>
               </div>
+
+              <button 
+                className="btn-secondary" 
+                onClick={onLogOut}
+                style={{ 
+                  width: '100%', 
+                  height: '48px', 
+                  marginTop: 'var(--spacing-24)', 
+                  borderColor: 'var(--red-dot)', 
+                  color: 'var(--red-dot)', 
+                  minHeight: '48px' 
+                }}
+              >
+                Log Out
+              </button>
             </div>
           )}
         </div>

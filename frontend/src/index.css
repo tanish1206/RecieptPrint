@@ -1124,3 +1124,42 @@ button:focus-visible, a:focus-visible, input:focus-visible {
   font-size: 11px;
   color: var(--text-muted);
 }
+
+/* Brand-Level Transitions & Animations */
+.animate-fade-in {
+  animation: fadeIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-slide-up {
+  animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Micro-interactions & Hovers */
+.btn-primary:hover, .btn-secondary:hover, .bottom-nav-tab:hover {
+  transform: translateY(-1.5px);
+}
+
+.btn-primary:active, .btn-secondary:active {
+  transform: translateY(0.5px);
+}
+
