@@ -74,7 +74,23 @@ export default function UploadPage({ session, onAuthSuccess, onLogOut }) {
   const [analysisStep,     setAnalysisStep]      = useState('');
   const [result,           setResult]            = useState(null);   // ← real API data
   const [apiError,         setApiError]          = useState('');
+  const [fileError,        setFileError]         = useState('');     // inline validation error
   const fileInputRef = useRef(null);
+
+  // ── File Validation ───────────────────────────────────────────────────────
+  const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'application/pdf'];
+  const MAX_SIZE_MB   = 5;
+
+  const validateFile = (file) => {
+    if (!ALLOWED_TYPES.includes(file.type) &&
+        !file.name.match(/\.(jpg|jpeg|png|pdf)$/i)) {
+      return 'Unsupported file type. Please upload a JPEG, PNG, or PDF.';
+    }
+    if (file.size > MAX_SIZE_MB * 1024 * 1024) {
+      return `File exceeds ${MAX_SIZE_MB} MB. Please upload a smaller receipt.`;
+    }
+    return null;
+  };
 
   // ── Drag / Drop / Select ──────────────────────────────────────────────────
 
@@ -89,14 +105,33 @@ export default function UploadPage({ session, onAuthSuccess, onLogOut }) {
     e.stopPropagation();
     setDragActive(false);
     const file = e.dataTransfer.files?.[0];
-    if (file) startUpload(file);
+    if (file) {
+      const err = validateFile(file);
+      if (err) { setFileError(err); return; }
+      setFileError('');
+      startUpload(file);
+    }
   }, [session]);
 
   const handleChange = useCallback((e) => {
     e.preventDefault();
     const file = e.target.files?.[0];
-    if (file) startUpload(file);
+    if (file) {
+      const err = validateFile(file);
+      if (err) { setFileError(err); return; }
+      setFileError('');
+      startUpload(file);
+    }
+    // Reset input so the same file can be re-selected after error
+    e.target.value = '';
   }, [session]);
+
+  const handleDropzoneKeyDown = (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      fileInputRef.current?.click();
+    }
+  };
 
   const triggerBrowse = () => fileInputRef.current?.click();
 
@@ -159,7 +194,14 @@ export default function UploadPage({ session, onAuthSuccess, onLogOut }) {
       setIsAnalyzing(false);
     } catch (err) {
       setIsAnalyzing(false);
-      setApiError(err.message || 'Analysis failed. Please try again.');
+      const msg = err.message || '';
+      if (msg.includes('429') || msg.toLowerCase().includes('rate limit') || msg.toLowerCase().includes('too many')) {
+        setApiError('Rate limit reached. Please wait a moment and try again.');
+      } else if (msg.toLowerCase().includes('parse') || msg.toLowerCase().includes('json') || msg.toLowerCase().includes('empty response')) {
+        setApiError('We couldn\'t read this receipt. Try a clearer photo or different lighting.');
+      } else {
+        setApiError(msg || 'Analysis failed. Please try again.');
+      }
     }
   };
 
@@ -167,6 +209,7 @@ export default function UploadPage({ session, onAuthSuccess, onLogOut }) {
     setSelectedFile(null);
     setResult(null);
     setApiError('');
+    setFileError('');
     setAnalysisProgress(0);
     setIsAnalyzing(false);
   };
@@ -278,10 +321,13 @@ export default function UploadPage({ session, onAuthSuccess, onLogOut }) {
 
         {/* ── ERROR STATE ── */}
         {session && !isAnalyzing && apiError && (
-          <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--spacing-20)', maxWidth: '460px', textAlign: 'center' }}>
+          <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--spacing-20)', maxWidth: '460px', textAlign: 'center' }} role="alert">
             <AlertCircle size={48} style={{ color: 'var(--red-dot)' }} />
-            <h3 style={{ fontSize: '20px', fontWeight: 600, color: 'var(--text-primary)' }}>Analysis Failed</h3>
+            <h3 style={{ fontSize: '20px', fontWeight: 600, color: 'var(--text-primary)' }}>We couldn't read this receipt</h3>
             <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.5 }}>{apiError}</p>
+            <p style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: 1.4 }}>
+              Tips: use a well-lit photo, ensure all four corners are visible, and avoid shadows.
+            </p>
             <button onClick={resetScanner} className="btn-primary" style={{ height: '42px', padding: '0 var(--spacing-24)', borderRadius: '8px' }}>
               <RefreshCw size={15} /> Try Again
             </button>
@@ -543,6 +589,10 @@ export default function UploadPage({ session, onAuthSuccess, onLogOut }) {
                   <div
                     className={`dropzone-card ${dragActive ? 'dragging' : ''}`}
                     onClick={triggerBrowse}
+                    onKeyDown={handleDropzoneKeyDown}
+                    tabIndex={0}
+                    role="button"
+                    aria-label="Upload receipt. Press Enter or Space to browse files."
                     style={{ height: '240px' }}
                   >
                     <UploadCloud className="upload-icon" />
@@ -551,6 +601,17 @@ export default function UploadPage({ session, onAuthSuccess, onLogOut }) {
                     <p className="upload-format-hint">Accepts JPG · PNG · PDF — max 5 MB</p>
                   </div>
                 </form>
+
+                {/* Inline file validation error */}
+                {fileError && (
+                  <div
+                    role="alert"
+                    style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', marginTop: '10px', padding: '10px 14px', backgroundColor: '#FFEBEE', border: '1px solid #FFCDD2', borderRadius: 'var(--radius-button)', fontSize: '13px', color: '#B71C1C', lineHeight: 1.4 }}
+                  >
+                    <AlertCircle size={16} style={{ flexShrink: 0, marginTop: '1px', color: 'var(--red-dot)' }} />
+                    {fileError}
+                  </div>
+                )}
 
                 {/* Demo button */}
                 <button
