@@ -1,4 +1,3 @@
-import React from 'react';
 import PropTypes from 'prop-types';
 import SwapSuggestions from './SwapSuggestions';
 import { Leaf, AlertTriangle, CheckCircle, ArrowLeft, Calendar, ShoppingBag, CreditCard, Car, Smartphone } from 'lucide-react';

@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
+import PropTypes from 'prop-types';
 import { Mail, Lock, LogIn, UserPlus, Info, CheckCircle2 } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '../utils/supabaseClient';
 
@@ -77,8 +78,8 @@ export default function DesktopAuth({ onAuthSuccess }) {
           return;
         }
       }
-    } catch (_) {
-      // Fall through to mock guest session
+    } catch (err) {
+      console.warn('Anonymous sign-in failed, falling back to mock guest:', err);
     }
 
     // Local mock fallback (so the demo scan still works)
@@ -203,3 +204,7 @@ export default function DesktopAuth({ onAuthSuccess }) {
     </div>
   );
 }
+
+DesktopAuth.propTypes = {
+  onAuthSuccess: PropTypes.func.isRequired,
+};

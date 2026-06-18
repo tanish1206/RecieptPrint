@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
-import { Calendar, Trash2, ChevronRight, ChevronDown, Leaf, Info, Loader2, AlertTriangle, BarChart3 } from 'lucide-react';
+import { Calendar, Trash2, ChevronRight, ChevronDown, Leaf, Loader2, AlertTriangle, BarChart3 } from 'lucide-react';
 
 export default function History({ token }) {
   const [historyData, setHistoryData] = useState([]);
@@ -10,11 +10,7 @@ export default function History({ token }) {
 
   const API_URL = import.meta.env.VITE_API_URL ?? '';
 
-  useEffect(() => {
-    fetchHistory();
-  }, []);
-
-  const fetchHistory = async () => {
+  async function fetchHistory() {
     setLoading(true);
     setError(null);
     try {
@@ -42,7 +38,14 @@ export default function History({ token }) {
     } finally {
       setLoading(false);
     }
-  };
+  }
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchHistory();
+    }, 0);
+    return () => clearTimeout(timer);
+  }, []);
 
   const deleteReceipt = async (id, e) => {
     e.stopPropagation();

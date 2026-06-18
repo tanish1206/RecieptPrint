@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import PropTypes from 'prop-types';
 import imageCompression from 'browser-image-compression';
 import * as pdfjsLib from 'pdfjs-dist';
@@ -62,7 +62,7 @@ export default function UploadZone({ token, onAnalysisComplete }) {
       });
     } catch (err) {
       console.error('PDF rasterization failed:', err);
-      throw new Error('Could not parse the PDF file. Make sure it is not password protected.');
+      throw new Error('Could not parse the PDF file. Make sure it is not password protected.', { cause: err });
     }
   };
 
@@ -142,8 +142,6 @@ export default function UploadZone({ token, onAnalysisComplete }) {
       const formData = new FormData();
       // Use the rasterized image name if it was a PDF
       const finalName = isPdf ? 'rasterized_receipt.jpg' : file.name;
-      const finalType = isPdf ? 'image/jpeg' : file.type;
-
       formData.append('receipt', fileToUpload, finalName);
 
       const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';

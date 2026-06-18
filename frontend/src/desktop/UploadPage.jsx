@@ -1,11 +1,9 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useCallback } from 'react';
+import PropTypes from 'prop-types';
 import {
   Leaf, UploadCloud, Sun, FileText, Frame, CheckCircle2,
   RefreshCw, LogOut, User, Sparkles, AlertCircle, Zap,
 } from 'lucide-react';
-import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip,
-} from 'recharts';
 import DesktopAuth from './DesktopAuth';
 import { analyzeReceipt, saveToHistory } from '../utils/api';
 
@@ -663,3 +661,9 @@ export default function UploadPage({ session, onAuthSuccess, onLogOut }) {
     </div>
   );
 }
+
+UploadPage.propTypes = {
+  session: PropTypes.object,
+  onAuthSuccess: PropTypes.func.isRequired,
+  onLogOut: PropTypes.func.isRequired,
+};
