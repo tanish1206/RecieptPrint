@@ -23,9 +23,17 @@ export async function analyzeReceipt(file, accessToken) {
     body: formData,
   });
 
-  const data = await response.json();
+  let data;
+  try {
+    data = await response.json();
+  } catch {
+    throw new Error('Failed to parse receipt data from AI response.');
+  }
 
   if (!response.ok) {
+    if (response.status === 429) {
+      throw new Error('429 — Rate limit reached. Please wait a moment and try again.');
+    }
     throw new Error(data.error || `Server error: ${response.status}`);
   }
 

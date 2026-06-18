@@ -172,7 +172,7 @@ export default function History({ token }) {
                 strokeWidth={2} 
                 className="hover:r-6 hover:fill-emerald-400 transition-all duration-150"
               />
-              <title>{`${pt.date}: ${pt.co2e} kg CO2e`}</title>
+              <title>{`${pt.date}: ${pt.co2e} kg CO₂e`}</title>
             </g>
           ))}
 
