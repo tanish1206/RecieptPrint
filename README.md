@@ -1,4 +1,4 @@
-# ReceiptPrint — Carbon Footprint Tracker
+# RecieptPrint — Carbon Footprint Tracker
 
 ReceiptPrint is an intelligent full-stack web application built for **PromptWars Challenge 3**. Upload a grocery or shopping receipt and the app automatically extracts every purchased item via **Groq AI (Llama 4 Scout Vision)**, maps items to a localised Indian CO₂ database, and returns a personalised carbon dashboard with sustainable swap suggestions — while tracking your footprint trend over time.
 
