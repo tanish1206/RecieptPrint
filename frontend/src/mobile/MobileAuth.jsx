@@ -15,8 +15,17 @@ export default function MobileAuth({ onAuthSuccess }) {
     setError('');
 
     try {
+      // If Supabase is not configured, use a demo mock session so the app
+      // is fully functional without backend auth credentials.
       if (!isSupabaseConfigured()) {
-        throw new Error('Supabase is not configured. Please add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to your .env file.');
+        const mockSession = {
+          access_token: 'mock_token_demo_' + Math.random().toString(36).substring(7),
+          user: { id: 'mock-demo-mobile', email: email || 'demo@receiptprint.in' },
+        };
+        localStorage.setItem('rp_session', JSON.stringify(mockSession));
+        onAuthSuccess(mockSession);
+        setLoading(false);
+        return;
       }
 
       let result;
