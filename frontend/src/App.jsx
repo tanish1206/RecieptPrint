@@ -1,22 +1,21 @@
-import React, { useState, useEffect } from 'react';
+import { useState } from 'react';
 import useDeviceType from './hooks/useDeviceType';
 import MobileShell from './mobile/MobileShell';
 import UploadPage from './desktop/UploadPage';
 
 export default function App() {
   const isMobile = useDeviceType();
-  const [session, setSession] = useState(null);
-
-  useEffect(() => {
+  const [session, setSession] = useState(() => {
     const savedSession = localStorage.getItem('rp_session');
     if (savedSession) {
       try {
-        setSession(JSON.parse(savedSession));
+        return JSON.parse(savedSession);
       } catch (e) {
         console.error('Failed to parse saved session', e);
       }
     }
-  }, []);
+    return null;
+  });
 
   const handleAuthSuccess = (newSession) => {
     setSession(newSession);

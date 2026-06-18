@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import PropTypes from 'prop-types';
 import { AlertCircle } from 'lucide-react';
 import { analyzeReceipt, saveToHistory } from '../utils/api';
 
@@ -120,3 +121,11 @@ export default function PreviewScreen({ imageUrl, file, session, onAnalysisCompl
     </div>
   );
 }
+
+PreviewScreen.propTypes = {
+  imageUrl: PropTypes.string,
+  file: PropTypes.instanceOf(File),
+  session: PropTypes.object,
+  onAnalysisComplete: PropTypes.func.isRequired,
+  onRetake: PropTypes.func.isRequired,
+};

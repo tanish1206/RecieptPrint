@@ -3,6 +3,9 @@ import { handleFileUpload } from '../middleware/upload.js';
 import { analyzeReceiptWithGroq } from '../services/groqService.js';
 import { calculateEmissions } from '../utils/carbonMapper.js';
 
+import { requireAuth } from '../middleware/auth.js';
+import { analysisLimiter } from '../middleware/rateLimit.js';
+
 const router = express.Router();
 
 /**
@@ -10,7 +13,7 @@ const router = express.Router();
  * Desc: Receives a receipt file, validates it, sends it to Groq for OCR extraction,
  *       maps the extracted items to the carbon database, and returns calculations and suggestions.
  */
-router.post('/', handleFileUpload, async (req, res) => {
+router.post('/', requireAuth, analysisLimiter, handleFileUpload, async (req, res, next) => {
   try {
     const file = req.file;
 
@@ -157,17 +160,11 @@ router.post('/', handleFileUpload, async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error during receipt analysis:', error);
-    
     const msg = error.message || '';
     if (msg.includes('credits') || msg.includes('API key') || msg.includes('Grok')) {
-      return res.status(400).json({ error: msg });
+      error.statusCode = 400;
     }
-
-    // Rule 5: Never expose internal error messages to the client. Log server-side.
-    res.status(500).json({
-      error: 'An error occurred while analyzing the receipt. Please try again.'
-    });
+    next(error);
   }
 });
 

@@ -1,3 +1,8 @@
+/**
+ * @file supabaseClient.js
+ * @description Initialises and exports the Supabase client for database interaction.
+ */
+
 import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
 
@@ -12,6 +17,10 @@ if (!supabaseUrl || !supabaseServiceKey) {
   console.warn('Supabase credentials missing. DB operations will be disabled or fail.');
 }
 
+/**
+ * Supabase client instance.
+ * @type {import('@supabase/supabase-js').SupabaseClient}
+ */
 export const supabase = createClient(
   supabaseUrl || 'https://placeholder.supabase.co',
   supabaseServiceKey || 'placeholder_key'

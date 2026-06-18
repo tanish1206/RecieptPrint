@@ -11,10 +11,17 @@ router.use(requireAuth);
  * Route: POST /api/history
  * Desc: Saves a processed receipt and its items to Supabase
  */
-router.post('/', async (req, res) => {
+router.post('/', async (req, res, next) => {
   try {
     const { storeName, receiptDate, totalAmount, totalEmissions, items = [] } = req.body;
     const userId = req.user.id;
+
+    if (userId === 'mock-user-123') {
+      return res.status(201).json({
+        message: 'Receipt saved successfully (demo mode).',
+        receiptId: 'mock-' + Date.now()
+      });
+    }
 
     if (!storeName || !receiptDate) {
       return res.status(400).json({ error: 'Store name and receipt date are required.' });
@@ -71,11 +78,7 @@ router.post('/', async (req, res) => {
     });
 
   } catch (error) {
-    // Rule 5: Never expose internal error messages to client
-    console.error('Failed to save receipt to history:', error);
-    res.status(500).json({
-      error: 'An error occurred while saving the receipt history.'
-    });
+    next(error);
   }
 });
 
@@ -83,9 +86,13 @@ router.post('/', async (req, res) => {
  * Route: GET /api/history
  * Desc: Retrieves all receipts for the logged-in user, along with itemized details
  */
-router.get('/', async (req, res) => {
+router.get('/', async (req, res, next) => {
   try {
     const userId = req.user.id;
+
+    if (userId === 'mock-user-123') {
+      return res.status(200).json([]);
+    }
 
     // Fetch receipts joined with receipt_items, ordered by receipt date descending
     const { data: receipts, error } = await supabase
@@ -102,11 +109,7 @@ router.get('/', async (req, res) => {
     res.status(200).json(receipts);
 
   } catch (error) {
-    // Rule 5: Never expose internal error messages to client
-    console.error('Failed to retrieve receipt history:', error);
-    res.status(500).json({
-      error: 'An error occurred while loading your history.'
-    });
+    next(error);
   }
 });
 
@@ -114,10 +117,14 @@ router.get('/', async (req, res) => {
  * Route: DELETE /api/history/:id
  * Desc: Deletes a receipt and its associated items from Supabase (handled via cascade delete in DB)
  */
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', async (req, res, next) => {
   try {
     const userId = req.user.id;
     const receiptId = req.params.id;
+
+    if (userId === 'mock-user-123') {
+      return res.status(200).json({ message: 'Receipt deleted successfully (demo mode).' });
+    }
 
     const { error } = await supabase
       .from('receipts')
@@ -133,10 +140,7 @@ router.delete('/:id', async (req, res) => {
     res.status(200).json({ message: 'Receipt deleted successfully.' });
 
   } catch (error) {
-    console.error('Failed to delete receipt:', error);
-    res.status(500).json({
-      error: 'An error occurred while trying to delete the receipt.'
-    });
+    next(error);
   }
 });
 

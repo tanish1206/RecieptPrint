@@ -1,4 +1,5 @@
-import React, { useRef } from 'react';
+import { useRef } from 'react';
+import PropTypes from 'prop-types';
 import { Camera, Image as ImageIcon, Leaf } from 'lucide-react';
 
 export default function HomeScreen({ onImageSelect }) {
@@ -85,3 +86,7 @@ export default function HomeScreen({ onImageSelect }) {
     </div>
   );
 }
+
+HomeScreen.propTypes = {
+  onImageSelect: PropTypes.func.isRequired,
+};

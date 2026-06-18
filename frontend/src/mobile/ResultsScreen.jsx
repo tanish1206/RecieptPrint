@@ -1,4 +1,4 @@
-import React from 'react';
+import PropTypes from 'prop-types';
 import { ChevronLeft, Leaf, Zap } from 'lucide-react';
 
 const CAT_COLORS = {
@@ -54,13 +54,14 @@ export default function ResultsScreen({ result, onBack, onSeeSwaps }) {
   const segments = buildSegments(items);
 
   // Build SVG ring paths
+  const ringPaths = [];
   let cumLen = 0;
-  const ringPaths = segments.map((seg) => {
+  for (const seg of segments) {
     const len = totalEmissions > 0 ? (seg.val / totalEmissions) * circumference : 0;
     const offset = -cumLen;
     cumLen += len;
-    return { ...seg, len, offset };
-  });
+    ringPaths.push({ ...seg, len, offset });
+  }
 
   const topOffenders = [...items].sort((a, b) => b.co2e - a.co2e).slice(0, 3);
 
@@ -167,3 +168,34 @@ export default function ResultsScreen({ result, onBack, onSeeSwaps }) {
     </div>
   );
 }
+
+ResultsScreen.propTypes = {
+  result: PropTypes.shape({
+    storeName: PropTypes.string,
+    receiptDate: PropTypes.string,
+    totalAmount: PropTypes.number,
+    items: PropTypes.arrayOf(
+      PropTypes.shape({
+        name: PropTypes.string,
+        quantity: PropTypes.number,
+        unit: PropTypes.string,
+        price: PropTypes.number,
+        category: PropTypes.string,
+        co2e: PropTypes.number,
+        isFallback: PropTypes.bool,
+        suggestions: PropTypes.array,
+      })
+    ),
+    totalEmissions: PropTypes.number,
+    swapSuggestions: PropTypes.array,
+    insights: PropTypes.arrayOf(PropTypes.string),
+    impactComparison: PropTypes.shape({
+      drivingEquivalentKm: PropTypes.number,
+      smartphoneCharges: PropTypes.number,
+      text: PropTypes.string,
+    }),
+    warning: PropTypes.string,
+  }),
+  onBack: PropTypes.func.isRequired,
+  onSeeSwaps: PropTypes.func.isRequired,
+};

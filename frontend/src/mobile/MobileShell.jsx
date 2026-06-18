@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
+import PropTypes from 'prop-types';
 import { Home, Clock, User } from 'lucide-react';
 import HomeScreen from './HomeScreen';
 import PreviewScreen from './PreviewScreen';
@@ -130,3 +131,9 @@ export default function MobileShell({ session, onAuthSuccess, onLogOut }) {
     </div>
   );
 }
+
+MobileShell.propTypes = {
+  session: PropTypes.object,
+  onAuthSuccess: PropTypes.func.isRequired,
+  onLogOut: PropTypes.func.isRequired,
+};

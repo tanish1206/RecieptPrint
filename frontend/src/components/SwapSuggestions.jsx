@@ -1,4 +1,5 @@
 import React from 'react';
+import PropTypes from 'prop-types';
 import { ArrowRight, Leaf, Sparkles } from 'lucide-react';
 
 export default function SwapSuggestions({ suggestions }) {
@@ -72,3 +73,16 @@ export default function SwapSuggestions({ suggestions }) {
     </div>
   );
 }
+
+SwapSuggestions.propTypes = {
+  suggestions: PropTypes.arrayOf(
+    PropTypes.shape({
+      category: PropTypes.string,
+      originalCo2e: PropTypes.number,
+      originalItem: PropTypes.string,
+      swapTo: PropTypes.string,
+      swapCo2e: PropTypes.number,
+      reason: PropTypes.string,
+    })
+  ).isRequired,
+};

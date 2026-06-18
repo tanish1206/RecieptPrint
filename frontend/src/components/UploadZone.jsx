@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import PropTypes from 'prop-types';
 import imageCompression from 'browser-image-compression';
 import * as pdfjsLib from 'pdfjs-dist';
 import { Upload, Camera, FileText, Check, RotateCcw, AlertTriangle, Loader2 } from 'lucide-react';
@@ -413,3 +414,8 @@ export default function UploadZone({ token, onAnalysisComplete }) {
     </div>
   );
 }
+
+UploadZone.propTypes = {
+  token: PropTypes.string,
+  onAnalysisComplete: PropTypes.func.isRequired,
+};

@@ -15,9 +15,6 @@ export default function useDeviceType() {
 
     window.addEventListener('resize', handleResize);
     
-    // Initial check
-    setMobile(isMobile());
-
     return () => {
       window.removeEventListener('resize', handleResize);
     };

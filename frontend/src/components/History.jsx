@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import PropTypes from 'prop-types';
 import { Calendar, Trash2, ChevronRight, ChevronDown, Leaf, Info, Loader2, AlertTriangle, BarChart3 } from 'lucide-react';
 
 export default function History({ token }) {
@@ -103,6 +104,51 @@ export default function History({ token }) {
   };
 
   const trendPoints = getTrendData();
+
+  const calculatePotentialItemSavings = (items) => {
+    if (!items || items.length === 0) return 0;
+    return items.reduce((sum, item) => {
+      const cat = (item.category || '').toLowerCase();
+      const name = (item.name || '').toLowerCase();
+      let itemSavings = 0;
+      if (name.includes('rice')) {
+        itemSavings = item.co2e * 0.68;
+      } else if (cat === 'meat' || name.includes('mutton') || name.includes('chicken') || name.includes('meat')) {
+        itemSavings = item.co2e * 0.85;
+      } else if (cat === 'dairy' || name.includes('milk') || name.includes('paneer') || name.includes('butter')) {
+        itemSavings = item.co2e * 0.50;
+      }
+      return sum + itemSavings;
+    }, 0);
+  };
+
+  const lifetimeSavings = historyData.reduce((sum, receipt) => sum + calculatePotentialItemSavings(receipt.items), 0);
+  const avgEmissions = historyData.reduce((sum, r) => sum + r.total_emissions, 0) / (historyData.length || 1);
+
+  const getTrendInterpretation = (data) => {
+    if (data.length < 2) {
+      return "Scan more receipts to unlock personalized carbon trend analysis and behavioral feedback.";
+    }
+    
+    // Sort oldest to newest
+    const chronological = [...data].sort((a, b) => new Date(a.receipt_date) - new Date(b.receipt_date));
+    const half = Math.floor(chronological.length / 2);
+    const firstHalf = chronological.slice(0, half);
+    const secondHalf = chronological.slice(half);
+    
+    const firstAvg = firstHalf.reduce((sum, r) => sum + r.total_emissions, 0) / (firstHalf.length || 1);
+    const secondAvg = secondHalf.reduce((sum, r) => sum + r.total_emissions, 0) / (secondHalf.length || 1);
+    
+    const diffPct = ((secondAvg - firstAvg) / (firstAvg || 1)) * 100;
+    
+    if (diffPct < -5) {
+      return `Your grocery carbon footprint has decreased by ${Math.abs(diffPct).toFixed(0)}% compared to your early shopping trips. You're successfully transitioning to a more plant-forward, climate-friendly basket!`;
+    } else if (diffPct > 5) {
+      return `Your grocery carbon footprint has increased by ${diffPct.toFixed(0)}% recently. Try replacing high-impact meats (mutton/chicken) or rice with low-carbon alternatives to get back on track.`;
+    } else {
+      return `Your grocery carbon footprint remains stable (around ${secondAvg.toFixed(1)} kg CO₂e per trip). Look for low-hanging fruit in your swap recommendations to begin reducing your impact.`;
+    }
+  };
 
   // Custom accessible SVG Area Chart generator
   const renderSvgChart = () => {
@@ -237,6 +283,60 @@ export default function History({ token }) {
         </div>
       ) : (
         <div className="flex flex-col gap-8">
+          {/* Summary Cards Panel */}
+          <div className="grid gap-6 md:grid-cols-3">
+            {/* Lifetime Savings Card */}
+            <div className="glass-panel rounded-2xl p-6 border-l-4 border-emerald-500 shadow-lg flex flex-col justify-between">
+              <div>
+                <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1">Lifetime Potential Savings</span>
+                <h3 className="text-3xl font-black text-emerald-400">
+                  {lifetimeSavings.toFixed(1)} <span className="text-lg font-normal text-slate-400">kg CO₂e</span>
+                </h3>
+                <p className="text-xs text-slate-400 mt-2">
+                  Total emissions you can prevent by fully adopting all suggested eco-swaps across your trips.
+                </p>
+              </div>
+            </div>
+
+            {/* Average Trip Footprint Card */}
+            <div className="glass-panel rounded-2xl p-6 border-l-4 border-slate-700 shadow-lg flex flex-col justify-between">
+              <div>
+                <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1">Average Footprint</span>
+                <h3 className="text-3xl font-black text-slate-200">
+                  {avgEmissions.toFixed(1)} <span className="text-lg font-normal text-slate-400">kg CO₂e</span>
+                </h3>
+                <p className="text-xs text-slate-400 mt-2">
+                  Your mean carbon footprint per shopping trip. India average is ~6.0 kg per grocery trip.
+                </p>
+              </div>
+            </div>
+
+            {/* Total Receipts Logged Card */}
+            <div className="glass-panel rounded-2xl p-6 border-l-4 border-slate-700 shadow-lg flex flex-col justify-between">
+              <div>
+                <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1">Receipts Scanned</span>
+                <h3 className="text-3xl font-black text-slate-200">
+                  {historyData.length} <span className="text-lg font-normal text-slate-400">trips</span>
+                </h3>
+                <p className="text-xs text-slate-400 mt-2">
+                  Total number of grocery bills uploaded and analyzed by our AI engine.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Trend Analysis Text Banner */}
+          {historyData.length >= 2 && (
+            <div className="glass-panel rounded-2xl p-5 border border-emerald-500/20 bg-slate-900/40 flex items-start gap-4 shadow-md">
+              <Leaf size={24} className="text-emerald-400 flex-shrink-0 mt-0.5" />
+              <div>
+                <h4 className="text-sm font-bold text-slate-200">Personalized Trend Analysis</h4>
+                <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                  {getTrendInterpretation(historyData)}
+                </p>
+              </div>
+            </div>
+          )}
           {/* Trend Chart Panel (Rule 18) */}
           <div className="glass-panel rounded-2xl p-6 shadow-xl">
             <h2 className="text-lg font-bold text-slate-200 mb-4 flex items-center gap-2">
@@ -341,3 +441,7 @@ export default function History({ token }) {
     </div>
   );
 }
+
+History.propTypes = {
+  token: PropTypes.string.isRequired,
+};

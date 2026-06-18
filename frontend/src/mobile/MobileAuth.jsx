@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
+import PropTypes from 'prop-types';
 import { Mail, Lock, LogIn, UserPlus, Info, Leaf } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '../utils/supabaseClient';
 
@@ -71,7 +72,9 @@ export default function MobileAuth({ onAuthSuccess }) {
           return;
         }
       }
-    } catch (_) {}
+    } catch (err) {
+      console.warn('Anonymous sign-in failed, falling back to mock guest:', err);
+    }
 
     // Fallback mock guest
     const mockSession = {
@@ -165,3 +168,7 @@ export default function MobileAuth({ onAuthSuccess }) {
     </div>
   );
 }
+
+MobileAuth.propTypes = {
+  onAuthSuccess: PropTypes.func.isRequired,
+};

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import PropTypes from 'prop-types';
 import { supabase, isSupabaseConfigured } from '../utils/supabaseClient';
 import { Mail, Lock, LogIn, UserPlus, AlertCircle, Info } from 'lucide-react';
 
@@ -203,3 +204,7 @@ export default function Auth({ onAuthSuccess }) {
     </div>
   );
 }
+
+Auth.propTypes = {
+  onAuthSuccess: PropTypes.func.isRequired,
+};

@@ -1,4 +1,4 @@
-import React from 'react';
+import PropTypes from 'prop-types';
 import { ChevronLeft, Leaf } from 'lucide-react';
 
 export default function SwapsScreen({ result, onBack }) {
@@ -86,3 +86,19 @@ export default function SwapsScreen({ result, onBack }) {
     </div>
   );
 }
+
+SwapsScreen.propTypes = {
+  result: PropTypes.shape({
+    swapSuggestions: PropTypes.arrayOf(
+      PropTypes.shape({
+        originalItem: PropTypes.string,
+        originalCo2e: PropTypes.number,
+        category: PropTypes.string,
+        swapTo: PropTypes.string,
+        swapCo2e: PropTypes.number,
+        reason: PropTypes.string,
+      })
+    ),
+  }),
+  onBack: PropTypes.func.isRequired,
+};

@@ -1,4 +1,5 @@
 import React from 'react';
+import PropTypes from 'prop-types';
 import SwapSuggestions from './SwapSuggestions';
 import { Leaf, AlertTriangle, CheckCircle, ArrowLeft, Calendar, ShoppingBag, CreditCard, Car, Smartphone } from 'lucide-react';
 
@@ -270,3 +271,33 @@ export default function Dashboard({ data, onBack }) {
     </div>
   );
 }
+
+Dashboard.propTypes = {
+  data: PropTypes.shape({
+    storeName: PropTypes.string,
+    receiptDate: PropTypes.string,
+    totalAmount: PropTypes.number,
+    items: PropTypes.arrayOf(
+      PropTypes.shape({
+        name: PropTypes.string,
+        quantity: PropTypes.number,
+        unit: PropTypes.string,
+        price: PropTypes.number,
+        category: PropTypes.string,
+        co2e: PropTypes.number,
+        isFallback: PropTypes.bool,
+        suggestions: PropTypes.array,
+      })
+    ),
+    totalEmissions: PropTypes.number,
+    swapSuggestions: PropTypes.array,
+    insights: PropTypes.arrayOf(PropTypes.string),
+    impactComparison: PropTypes.shape({
+      drivingEquivalentKm: PropTypes.number,
+      smartphoneCharges: PropTypes.number,
+      text: PropTypes.string,
+    }),
+    warning: PropTypes.string,
+  }).isRequired,
+  onBack: PropTypes.func.isRequired,
+};

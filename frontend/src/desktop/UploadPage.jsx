@@ -92,6 +92,56 @@ export default function UploadPage({ session, onAuthSuccess, onLogOut }) {
     return null;
   };
 
+  const startUpload = async (file) => {
+    setSelectedFile(file);
+    setResult(null);
+    setApiError('');
+    setIsAnalyzing(true);
+    setAnalysisProgress(0);
+    setAnalysisStep(STEPS[0]);
+
+    try {
+      // Tick the fake-progress bar while the real API call is in flight
+      const token = session?.access_token || 'mock_token_guest';
+
+      // Kick off real API call immediately
+      const apiPromise = analyzeReceipt(file, token);
+
+      // Animate progress bar in parallel (stops at 90% until API resolves)
+      let prog = 0;
+      const ticker = setInterval(() => {
+        prog = Math.min(prog + 3, 90);
+        const stepIdx = Math.min(Math.floor((prog / 90) * STEPS.length), STEPS.length - 1);
+        setAnalysisProgress(prog);
+        setAnalysisStep(STEPS[stepIdx]);
+      }, 120);
+
+      const data = await apiPromise;
+
+      clearInterval(ticker);
+      setAnalysisProgress(100);
+      setAnalysisStep('Analysis complete!');
+
+      await new Promise((r) => setTimeout(r, 500));
+
+      // Save to history in the background (non-blocking)
+      saveToHistory(data, token).catch(() => {});
+
+      setResult(data);
+      setIsAnalyzing(false);
+    } catch (err) {
+      setIsAnalyzing(false);
+      const msg = err.message || '';
+      if (msg.includes('429') || msg.toLowerCase().includes('rate limit') || msg.toLowerCase().includes('too many')) {
+        setApiError('Rate limit reached. Please wait a moment and try again.');
+      } else if (msg.toLowerCase().includes('parse') || msg.toLowerCase().includes('json') || msg.toLowerCase().includes('empty response')) {
+        setApiError('We couldn\'t read this receipt. Try a clearer photo or different lighting.');
+      } else {
+        setApiError(msg || 'Analysis failed. Please try again.');
+      }
+    }
+  };
+
   // ── Drag / Drop / Select ──────────────────────────────────────────────────
 
   const handleDrag = useCallback((e) => {
@@ -155,56 +205,6 @@ export default function UploadPage({ session, onAuthSuccess, onLogOut }) {
 
   // ── Core Upload + API Call ────────────────────────────────────────────────
 
-  const startUpload = async (file) => {
-    setSelectedFile(file);
-    setResult(null);
-    setApiError('');
-    setIsAnalyzing(true);
-    setAnalysisProgress(0);
-    setAnalysisStep(STEPS[0]);
-
-    try {
-      // Tick the fake-progress bar while the real API call is in flight
-      const token = session?.access_token || 'mock_token_guest';
-
-      // Kick off real API call immediately
-      const apiPromise = analyzeReceipt(file, token);
-
-      // Animate progress bar in parallel (stops at 90% until API resolves)
-      let prog = 0;
-      const ticker = setInterval(() => {
-        prog = Math.min(prog + 3, 90);
-        const stepIdx = Math.min(Math.floor((prog / 90) * STEPS.length), STEPS.length - 1);
-        setAnalysisProgress(prog);
-        setAnalysisStep(STEPS[stepIdx]);
-      }, 120);
-
-      const data = await apiPromise;
-
-      clearInterval(ticker);
-      setAnalysisProgress(100);
-      setAnalysisStep('Analysis complete!');
-
-      await new Promise((r) => setTimeout(r, 500));
-
-      // Save to history in the background (non-blocking)
-      saveToHistory(data, token).catch(() => {});
-
-      setResult(data);
-      setIsAnalyzing(false);
-    } catch (err) {
-      setIsAnalyzing(false);
-      const msg = err.message || '';
-      if (msg.includes('429') || msg.toLowerCase().includes('rate limit') || msg.toLowerCase().includes('too many')) {
-        setApiError('Rate limit reached. Please wait a moment and try again.');
-      } else if (msg.toLowerCase().includes('parse') || msg.toLowerCase().includes('json') || msg.toLowerCase().includes('empty response')) {
-        setApiError('We couldn\'t read this receipt. Try a clearer photo or different lighting.');
-      } else {
-        setApiError(msg || 'Analysis failed. Please try again.');
-      }
-    }
-  };
-
   const resetScanner = () => {
     setSelectedFile(null);
     setResult(null);
@@ -221,13 +221,14 @@ export default function UploadPage({ session, onAuthSuccess, onLogOut }) {
   const circumference = 2 * Math.PI * 66;
 
   // Build SVG ring: each segment arc
+  const ringPaths = [];
   let cumLen = 0;
-  const ringPaths = segments.map((seg) => {
+  for (const seg of segments) {
     const len    = total > 0 ? (seg.val / total) * circumference : 0;
     const offset = -cumLen;
     cumLen += len;
-    return { ...seg, len, offset };
-  });
+    ringPaths.push({ ...seg, len, offset });
+  }
 
   // Build top offenders (top 3 items by CO2e)
   const topOffenders = result
