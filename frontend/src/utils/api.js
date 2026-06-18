@@ -3,7 +3,9 @@
  * All calls to the Express backend go through here.
  */
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+// In production (Vercel): VITE_API_URL is not set → defaults to '' (relative paths → /api/...)
+// In local dev:           VITE_API_URL=http://localhost:5000
+const API_BASE = import.meta.env.VITE_API_URL ?? '';
 
 /**
  * Uploads a receipt image file to the backend for AI analysis.
